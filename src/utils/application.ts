@@ -147,7 +147,7 @@ export class FeltApplication {
 
 		container.sortableChildren = true;
 
-		container.on("pointerup", (event) => clearSelectionAndPresence(event));
+		// container.on("pointerup", (event) => clearSelectionAndPresence(event));
 
 		app.stage.addChild(container);
 
