@@ -1,8 +1,6 @@
 import { OdspClient } from "@fluid-experimental/odsp-client";
 import { AzureClient } from "@fluidframework/azure-client";
 import React from "react";
-import { DndProvider } from "react-dnd";
-import { HTML5Backend } from "react-dnd-html5-backend";
 import { createRoot } from "react-dom/client";
 import { ReactApp } from "./react/ux.js";
 import { appTreeConfiguration } from "./schema/app_schema.js";
@@ -11,6 +9,8 @@ import { createUndoRedoStacks } from "./utils/undo.js";
 import { containerSchema } from "./schema/container_schema.js";
 import { loadFluidData } from "./infra/fluid.js";
 import { IFluidContainer } from "fluid-framework";
+import { Signaler } from "@fluid-experimental/data-objects";
+import { Application } from "./utils/application.js";
 
 export async function loadApp(
 	client: AzureClient | OdspClient,
@@ -23,6 +23,9 @@ export async function loadApp(
 	const sessionTree = container.initialObjects.sessionData.schematize(sessionTreeConfiguration);
 	const appTree = container.initialObjects.appData.schematize(appTreeConfiguration);
 
+	// initialize signal manager
+	const signaler = container.initialObjects.signalManager as Signaler;
+
 	// create the root element for React
 	const app = document.createElement("div");
 	app.id = "app";
@@ -32,20 +35,32 @@ export async function loadApp(
 	// Create undo/redo stacks for the app
 	const undoRedo = createUndoRedoStacks(appTree.events);
 
+	const application = await Application.build(appTree, container, services.audience, signaler);
+
 	// Render the app - note we attach new containers after render so
 	// the app renders instantly on create new flow. The app will be
 	// interactive immediately.
 	root.render(
-		<DndProvider backend={HTML5Backend}>
-			<ReactApp
-				items={appTree}
-				sessionTree={sessionTree}
-				audience={services.audience}
-				container={container}
-				undoRedo={undoRedo}
-			/>
-		</DndProvider>,
+		<ReactApp
+			audience={application.audience}
+			createShape={application.createShape}
+			createLotsOfShapes={application.createLotsOfShapes}
+			changeColor={application.changeColorofSelected}
+			deleteShape={application.deleteSelectedShapes}
+			deleteAllShapes={application.deleteAllShapes}
+			bringToFront={application.bringSelectedToFront}
+			toggleSignals={application.toggleSignals}
+			signals={application.getUseSignals}
+			selectionManager={application.selection}
+			localShapes={application.localShapes}
+			shapeTree={application.shapeTree}
+			fluidContainer={application.container}
+			pixiApp={application.pixiApp}
+		/>,
 	);
+
+	// disable right-click context menu since right-click is reserved
+	document.addEventListener("contextmenu", (event) => event.preventDefault());
 
 	return container;
 }

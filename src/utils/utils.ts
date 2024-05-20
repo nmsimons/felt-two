@@ -1,42 +1,41 @@
-/*!
- * Copyright (c) Microsoft Corporation and contributors. All rights reserved.
- * Licensed under the MIT License.
- */
+export enum ShapeType {
+	Circle = "CIRCLE",
+	Square = "SQUARE",
+	Triangle = "TRIANGLE",
+	Rectangle = "RECTANGLE",
+}
 
-import { Note } from "../schema/app_schema.js";
+export enum Color {
+	Red = "0xFF0000",
+	Green = "0x009A44",
+	Blue = "0x0000FF",
+	Orange = "0xFF7F00",
+	Purple = "0x800080",
+}
 
-export const undefinedUserId = "[UNDEFINED]";
+export enum UXColor {
+	Red = "text-[#FF0000]",
+	Green = "text-[#009A44]",
+	Blue = "text-[#0000FF]",
+	Orange = "text-[#FF7F00]",
+	Purple = "text-[#800080]",
+	White = "text-white",
+}
 
-export function getRotation(note: Note) {
-	const i = hashCode(note.id);
-
-	const rotationArray = [
-		"rotate-1",
-		"-rotate-2",
-		"rotate-2",
-		"-rotate-1",
-		"-rotate-3",
-		"rotate-3",
+export function getNextColor(current: Color) {
+	return Object.values(Color)[
+		(Object.values(Color).indexOf(current) + 1) % Object.values(Color).length
 	];
-
-	return rotationArray[i % rotationArray.length];
 }
 
-function hashCode(str: string): number {
-	let h = 0;
-	for (let i = 0; i < str.length; i++) {
-		h = 31 * h + str.charCodeAt(i);
-	}
-	return h;
+export function getNextShape(current: ShapeType) {
+	return Object.values(ShapeType)[
+		(Object.values(ShapeType).indexOf(current) + 1) % Object.values(ShapeType).length
+	];
 }
 
-export enum dragType {
-	NOTE = "Note",
-	GROUP = "Group",
-}
-
-export enum selectAction {
-	MULTI,
-	REMOVE,
-	SINGLE,
+export function getRandomInt(min: number, max: number) {
+	min = Math.ceil(min);
+	max = Math.floor(max);
+	return Math.floor(Math.random() * (max - min) + min); // The maximum is exclusive and the minimum is inclusive
 }
