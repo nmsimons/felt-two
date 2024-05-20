@@ -5,13 +5,7 @@ import { Signaler, SignalListener } from "@fluid-experimental/data-objects";
 import { IAzureAudience } from "@fluidframework/azure-client";
 import { v4 as uuid } from "uuid";
 import { Shape, Shapes } from "../schema/app_schema.js";
-import {
-	FeltShape,
-	addShapeToShapeTree,
-	shapeLimit,
-	bringToFront,
-	Shapes as PIXIShapes,
-} from "./shapes.js";
+import { FeltShape, shapeLimit, Shapes as PIXIShapes, createShapeNode } from "./shapes.js";
 import { Color, getNextColor, getNextShape, getRandomInt, ShapeType } from "./utils.js";
 import { clearPresence, removeUserFromPresenceArray } from "./presence.js";
 import {
@@ -23,10 +17,7 @@ import {
 import { ConnectionState, IFluidContainer, IMember, Tree, TreeView } from "fluid-framework";
 import { Signal2Pixi, SignalPackage, Signals } from "./wrappers.js";
 
-export class Application {
-	private disconnect = 0;
-	private dirty = 0;
-
+export class FeltApplication {
 	private constructor(
 		public pixiApp: PIXIApplication,
 		public selection: PIXIShapes,
@@ -38,12 +29,18 @@ export class Application {
 		public container: IFluidContainer,
 	) {
 		// make background clickable
-		Application.addBackgroundShape(() => {
+		FeltApplication.addBackgroundShape(() => {
 			this.clearSelection();
 			clearPresence(audience.getMyself()?.id!);
 		}, pixiApp);
 
-		//Get all existing shapes
+		// Initialize the canvas container
+		this._canvas = FeltApplication.createScaledContainer(pixiApp, () => {
+			this.clearSelection();
+			clearPresence(audience.getMyself()?.id!);
+		});
+
+		// Get all existing shapes
 		this.updateAllShapes();
 
 		// event handler for detecting remote changes to Fluid data and updating
@@ -84,7 +81,7 @@ export class Application {
 		container: IFluidContainer,
 		audience: IAzureAudience,
 		signaler: Signaler,
-	): Promise<Application> {
+	): Promise<FeltApplication> {
 		// create a local map for shapes - contains customized PIXI objects
 		const localShapes = new PIXIShapes(shapeLimit);
 
@@ -95,7 +92,7 @@ export class Application {
 		// create PIXI app
 		const pixiApp = await this.createPixiApp();
 
-		return new Application(
+		return new FeltApplication(
 			pixiApp,
 			selection,
 			audience,
@@ -108,12 +105,9 @@ export class Application {
 	}
 
 	private static async createPixiApp() {
-		const pixiApp = await Application.initPixiApp();
-
+		const pixiApp = await FeltApplication.initPixiApp();
 		pixiApp.stage.sortableChildren = true;
-
 		pixiApp.stage.removeChildren();
-
 		return pixiApp;
 	}
 
@@ -134,20 +128,37 @@ export class Application {
 		return app;
 	}
 
-	// Clear the stage and create a new scaled container; the
-	// provided callback will be called with the new container
-	private static createScaledContainer = (app: PIXIApplication) => {
+	// Create a new scaled container
+	private static createScaledContainer = (
+		app: PIXIApplication,
+		clearSelectionAndPresence: (event: FederatedPointerEvent) => void,
+	) => {
 		// This is the stage for the new scene
 		const container = new Container();
-		container.width = Application.WIDTH;
-		container.height = Application.HEIGHT;
-		container.scale.x = Application.actualWidth(app) / Application.WIDTH;
-		container.scale.y = Application.actualHeight(app) / Application.HEIGHT;
-		container.x = app.screen.width / 2 - Application.actualWidth(app) / 2;
-		container.y = app.screen.height / 2 - Application.actualHeight(app) / 2;
+
+		// Set the size of the container to the size of the stage
+		container.width = app.canvas.width;
+		container.height = app.canvas.height;
+		container.position.set(app.stage.x, app.stage.y);
+		container.boundsArea = app.screen;
+
+		container.interactive = true;
+		container.interactiveChildren = true;
+
 		container.sortableChildren = true;
+
+		container.on("pointerup", (event) => clearSelectionAndPresence(event));
+
+		app.stage.addChild(container);
+
 		return container;
 	};
+
+	private _canvas: Container;
+
+	public get canvas(): Container {
+		return this._canvas;
+	}
 
 	private static WIDTH = 500;
 
@@ -196,7 +207,7 @@ export class Application {
 	// all shapes on the canvas
 	public addNewLocalShape = (shape: Shape): FeltShape => {
 		const feltShape = new FeltShape(
-			this.pixiApp,
+			this.canvas,
 			shape,
 			(userId: string) => {
 				clearPresence(userId);
@@ -219,15 +230,15 @@ export class Application {
 	public createShape = (shapeType: ShapeType, color: Color): void => {
 		if (this.localShapes.maxReached) return;
 
-		addShapeToShapeTree(
+		const shape = createShapeNode(
 			shapeType,
 			color,
 			uuid(),
-			FeltShape.size,
-			FeltShape.size,
-			0, // z-index
-			this.shapeTree,
+			getRandomInt(FeltShape.size, this.pixiApp.screen.width - FeltShape.size),
+			getRandomInt(FeltShape.size, this.pixiApp.screen.height - FeltShape.size),
 		);
+
+		this.shapeTree.root.insertAtEnd(shape);
 	};
 
 	// function passed into React UX for creating lots of different shapes at once
@@ -235,23 +246,25 @@ export class Application {
 		Tree.runTransaction(this.shapeTree.root, () => {
 			let shapeType = ShapeType.Circle;
 			let color = Color.Red;
+			const shapes = [];
 
 			for (let index = 0; index < amount; index++) {
 				shapeType = getNextShape(shapeType);
 				color = getNextColor(color);
 
 				if (this.localShapes.size < shapeLimit) {
-					addShapeToShapeTree(
+					const shape = createShapeNode(
 						shapeType,
 						color,
 						uuid(),
 						getRandomInt(FeltShape.size, this.pixiApp.screen.width - FeltShape.size),
 						getRandomInt(FeltShape.size, this.pixiApp.screen.height - FeltShape.size),
-						0,
-						this.shapeTree,
 					);
+					shapes.push(shape);
 				}
 			}
+
+			this.shapeTree.root.insertAtEnd(...shapes);
 		});
 	};
 
@@ -300,16 +313,19 @@ export class Application {
 		// Remove shape from local map
 		this.localShapes.delete(shape.id);
 
-		// Remove the shape from the canvas
+		// Remove the shape from the selection map
 		this.selection.delete(shape.id);
 
+		// Remove the shape from the canvas
+		this.canvas.removeChild(shape);
+
 		// Destroy the local shape object
-		shape.destroy();
+		// shape.destroy();
 	};
 
 	public bringSelectedToFront = (): void => {
 		this.changeSelectedShapes(
-			(shape: FeltShape) => bringToFront(shape), // fix this
+			(shape: FeltShape) => shape.bringToFront(), // fix this
 		);
 	};
 
@@ -328,12 +344,14 @@ export class Application {
 			let localShape = this.localShapes.get(shape.id);
 			if (localShape === undefined) {
 				localShape = this.addNewLocalShape(shape);
+				console.log(shape.id, "Added");
 			}
 		}
 
 		// delete local shapes that no longer exist
 		this.localShapes.forEach((shape: FeltShape) => {
 			if (!seenIds.has(shape.id)) {
+				console.log(shape.id, "DELETED");
 				this.deleteLocalShape(this.localShapes.get(shape.id)!);
 			}
 		});

@@ -1,5 +1,5 @@
 import { Shape, Shapes as FluidShapes } from "../schema/app_schema.js";
-import { Application, Graphics, TextStyle, Text } from "pixi.js";
+import { Graphics, TextStyle, Text, Container, FederatedPointerEvent } from "pixi.js";
 import { Color, ShapeType } from "./utils.js";
 import { AzureMember, IAzureAudience } from "@fluidframework/azure-client";
 import {
@@ -10,40 +10,25 @@ import {
 } from "./presence.js";
 import { Pixi2Signal, Signals } from "./wrappers.js";
 import { Signaler } from "@fluid-experimental/data-objects";
-import { Tree, TreeView } from "fluid-framework";
+import { Tree } from "fluid-framework";
 
 // set some constants for shapes
-export const shapeLimit = 1000;
+export const shapeLimit = 10000;
 
-// brings the shape to the top of the zorder
-export function bringToFront(feltShape: FeltShape): void {
-	// do something with the zorder
-}
-
-// increments the zorder by one and returns the value
-export function getMaxZIndex(): number {
-	// do something with the zorder
-	return 0;
-}
-
-export function addShapeToShapeTree(
+export function createShapeNode(
 	shapeType: ShapeType,
 	color: Color,
 	id: string,
 	x: number,
 	y: number,
-	z: number,
-	shapeTree: TreeView<typeof FluidShapes>,
-): void {
-	shapeTree.root.insertAtStart(
-		new Shape({
-			id,
-			x,
-			y,
-			color,
-			shapeType: shapeType,
-		}),
-	);
+): Shape {
+	return new Shape({
+		id,
+		x,
+		y,
+		color,
+		shapeType: shapeType,
+	});
 }
 
 // defines a custom map for storing local shapes that fires an event when the map changes
@@ -100,7 +85,7 @@ export class FeltShape extends Graphics {
 	public readonly id: string;
 
 	constructor(
-		private app: Application,
+		private canvas: Container,
 		public shape: Shape, // the Fluid shape object
 		private clearPresence: (userId: string) => void,
 		private addToSelected: (shape: FeltShape) => void,
@@ -124,7 +109,7 @@ export class FeltShape extends Graphics {
 		this._shape.fill(0xffffff);
 		this.interactive = true;
 		this.addChild(this._shape);
-		this.app.stage.addChild(this);
+		this.canvas.addChild(this);
 	};
 
 	private initProperties = () => {
@@ -135,50 +120,58 @@ export class FeltShape extends Graphics {
 	};
 
 	private initUserEvents = () => {
-		const onDragStart = (event: any) => {
+		const onDragStart = (event: FederatedPointerEvent) => {
+			event.stopPropagation();
 			this.dragging = true;
-			this.app.stage.on("pointermove", onDragMove);
-			event.interactionFrequency = 1;
+			this.canvas.on("pointermove", onDragMove);
 		};
 
-		const onDragEnd = (event: any) => {
+		const onDragEnd = (event: FederatedPointerEvent) => {
+			event.stopPropagation();
 			if (this.dragging) {
-				this.app.stage.off("pointermove", onDragMove);
+				this.canvas.off("pointermove", onDragMove);
 				this.dragging = false;
-				const pos = clampXY(event.data.global.x, event.data.global.y);
+				const pos = clampXY(event.x, event.y);
 				this.updateFluidLocation(pos.x, pos.y); // syncs local changes with Fluid data - note that this call uses the current position to fix a big where the shape shifts on selection
 			}
 		};
 
-		const onDragMove = (event: any) => {
+		const onDragMove = (event: FederatedPointerEvent) => {
+			event.stopPropagation();
+			event.propagationStopped;
 			if (this.dragging) {
-				event.interactionFrequency = 1;
 				const pos = clampXY(event.data.global.x, event.data.global.y);
 				this.updateFluidLocation(pos.x, pos.y);
 			}
 		};
 
-		const onSelect = (event: any) => {
+		const onSelect = (event: FederatedPointerEvent) => {
+			event.stopPropagation();
 			this.select();
 		};
 
 		const clampXY = (x: number, y: number): { x: number; y: number } => {
-			if (x < this._shape.width / 2 || x > this.app.screen.width - this._shape.width / 2) {
+			if (
+				x < this._shape.width / 2 ||
+				x > this.canvas.boundsArea.width - this._shape.width / 2
+			) {
 				x = this.x;
 			}
 
-			if (y < this._shape.height / 2 || y > this.app.screen.height - this._shape.height / 2) {
+			if (
+				y < this._shape.height / 2 ||
+				y > this.canvas.boundsArea.height - this._shape.height / 2
+			) {
 				y = this.y;
 			}
 			return { x, y };
 		};
 
-		this.app.stage.eventMode = "static";
-		this.app.stage.hitArea = this.app.screen;
-		this.app.stage.on("pointerup", onDragEnd);
-		this.app.stage.on("pointerupoutside", onDragEnd);
-
+		this.canvas.eventMode = "static";
+		this.canvas.hitArea = this.canvas.boundsArea;
 		// intialize event handlers
+		this.canvas.on("pointerup", onDragEnd);
+		this.canvas.on("pointerupoutside", onDragEnd);
 		this.on("pointerdown", onDragStart).on("pointerdown", onSelect);
 	};
 
@@ -190,12 +183,47 @@ export class FeltShape extends Graphics {
 		return this.shape.color as Color;
 	}
 
-	set z(value: number) {
-		// no op
+	public bringToFront() {
+		const parent = Tree.parent(this.shape);
+		if (Tree.is(parent, FluidShapes)) {
+			console.log(this.shape.id, "BringToFront");
+			parent.moveToEnd(Tree.key(this.shape) as number);
+		}
 	}
 
-	get z() {
-		return 0; // no op
+	public sendToBack() {
+		const parent = Tree.parent(this.shape);
+		if (Tree.is(parent, FluidShapes)) {
+			parent.moveToStart(Tree.key(this.shape) as number);
+		}
+	}
+
+	public bringForward() {
+		const parent = Tree.parent(this.shape);
+		if (Tree.is(parent, FluidShapes)) {
+			if (parent.length > (Tree.key(this.shape) as number)) {
+				parent.moveToIndex(
+					Tree.key(this.shape) as number,
+					(Tree.key(this.shape) as number) + 1,
+				);
+			}
+		}
+	}
+
+	public sendBackward() {
+		const parent = Tree.parent(this.shape);
+		if (Tree.is(parent, FluidShapes)) {
+			if (0 < (Tree.key(this.shape) as number)) {
+				parent.moveToIndex(
+					Tree.key(this.shape) as number,
+					(Tree.key(this.shape) as number) - 1,
+				);
+			}
+		}
+	}
+
+	public get z() {
+		return Tree.key(this.shape) as number;
 	}
 
 	private updateFluidLocation = (x: number, y: number) => {

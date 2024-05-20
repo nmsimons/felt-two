@@ -10,7 +10,7 @@ import { containerSchema } from "./schema/container_schema.js";
 import { loadFluidData } from "./infra/fluid.js";
 import { IFluidContainer } from "fluid-framework";
 import { Signaler } from "@fluid-experimental/data-objects";
-import { Application } from "./utils/application.js";
+import { FeltApplication } from "./utils/application.js";
 
 export async function loadApp(
 	client: AzureClient | OdspClient,
@@ -35,29 +35,17 @@ export async function loadApp(
 	// Create undo/redo stacks for the app
 	const undoRedo = createUndoRedoStacks(appTree.events);
 
-	const application = await Application.build(appTree, container, services.audience, signaler);
+	const feltApplication = await FeltApplication.build(
+		appTree,
+		container,
+		services.audience,
+		signaler,
+	);
 
 	// Render the app - note we attach new containers after render so
 	// the app renders instantly on create new flow. The app will be
 	// interactive immediately.
-	root.render(
-		<ReactApp
-			audience={application.audience}
-			createShape={application.createShape}
-			createLotsOfShapes={application.createLotsOfShapes}
-			changeColor={application.changeColorofSelected}
-			deleteShape={application.deleteSelectedShapes}
-			deleteAllShapes={application.deleteAllShapes}
-			bringToFront={application.bringSelectedToFront}
-			toggleSignals={application.toggleSignals}
-			signals={application.getUseSignals}
-			selectionManager={application.selection}
-			localShapes={application.localShapes}
-			shapeTree={application.shapeTree}
-			fluidContainer={application.container}
-			pixiApp={application.pixiApp}
-		/>,
-	);
+	root.render(<ReactApp feltApplication={feltApplication} undoRedo={undoRedo} />);
 
 	// disable right-click context menu since right-click is reserved
 	document.addEventListener("contextmenu", (event) => event.preventDefault());

@@ -10,7 +10,8 @@ import { Color, ShapeType as S, UXColor } from "../utils/utils.js";
 import { Shapes } from "../utils/shapes.js";
 import { ConnectionState, IFluidContainer, Tree, TreeView } from "fluid-framework";
 import { Shapes as FluidShapes } from "../schema/app_schema.js";
-import { Application } from "pixi.js";
+import { FeltApplication as FeltApplication } from "../utils/application.js";
+import { Application, Container } from "pixi.js";
 import {
 	SquareFilled,
 	CircleFilled,
@@ -21,30 +22,43 @@ import {
 	DeleteFilled,
 	PaintBrushFilled,
 	PositionToFrontFilled,
+	ArrowUndoFilled,
+	ArrowRedoFilled,
 } from "@fluentui/react-icons";
 import "../output.css";
+import { undoRedo } from "../utils/undo.js";
 
 // eslint-disable-next-line react/prop-types
 export function ReactApp(props: {
-	audience: IAzureAudience;
-	createShape: any;
-	createLotsOfShapes: any;
-	changeColor: any;
-	deleteShape: any;
-	deleteAllShapes: any;
-	bringToFront: any;
-	toggleSignals: any;
-	signals: () => boolean;
-	selectionManager: any;
-	localShapes: Shapes;
-	shapeTree: TreeView<typeof FluidShapes>;
-	fluidContainer: IFluidContainer;
-	pixiApp: Application;
+	feltApplication: FeltApplication;
+	undoRedo: undoRedo;
 }): JSX.Element {
+	const appProps = {
+		feltApplication: props.feltApplication,
+		audience: props.feltApplication.audience,
+		createShape: props.feltApplication.createShape,
+		createLotsOfShapes: props.feltApplication.createLotsOfShapes,
+		changeColor: props.feltApplication.changeColorofSelected,
+		deleteShape: props.feltApplication.deleteSelectedShapes,
+		deleteAllShapes: props.feltApplication.deleteAllShapes,
+		bringToFront: props.feltApplication.bringSelectedToFront,
+		toggleSignals: props.feltApplication.toggleSignals,
+		signals: props.feltApplication.getUseSignals,
+		selectionManager: props.feltApplication.selection,
+		localShapes: props.feltApplication.localShapes,
+		shapeTree: props.feltApplication.shapeTree,
+		fluidContainer: props.feltApplication.container,
+		canvas: props.feltApplication.canvas,
+		pixiApp: props.feltApplication.pixiApp,
+		undoRedo: props.undoRedo,
+	};
+
+	const deleteShape = props.feltApplication.deleteSelectedShapes;
+
 	const keyDownHandler = (e: KeyboardEvent) => {
 		switch (e.key) {
 			case "Delete": {
-				props.deleteShape();
+				deleteShape();
 				break;
 			}
 		}
@@ -55,10 +69,10 @@ export function ReactApp(props: {
 
 	return (
 		<div className="w-full h-full">
-			<Header {...props} />
-			<Toolbar {...props} />
-			<Canvas {...props} />
-			<StatusBar {...props} />
+			<Header {...appProps} />
+			<Toolbar {...appProps} />
+			<Canvas {...appProps} />
+			<StatusBar {...appProps} />
 		</div>
 	);
 }
@@ -74,6 +88,7 @@ export function Toolbar(props: {
 	audience: IAzureAudience;
 	selectionManager: Shapes;
 	localShapes: Shapes;
+	undoRedo: undoRedo;
 }) {
 	const shapeButtonColor = "black";
 
@@ -98,27 +113,31 @@ export function Toolbar(props: {
 			<ButtonGroup>
 				<IconButton
 					icon={<CircleFilled />}
-					color={shapeButtonColor}
+					color={UXColor.Red}
 					disabled={maxReached}
 					handleClick={() => props.createShape(S.Circle, Color.Red)}
+					background="bg-white"
 				/>
 				<IconButton
 					icon={<SquareFilled />}
-					color={shapeButtonColor}
+					color={UXColor.Blue}
 					disabled={maxReached}
 					handleClick={() => props.createShape(S.Square, Color.Blue)}
+					background="bg-white"
 				/>
 				<IconButton
 					icon={<TriangleFilled />}
-					color={shapeButtonColor}
+					color={UXColor.Orange}
 					disabled={maxReached}
 					handleClick={() => props.createShape(S.Triangle, Color.Orange)}
+					background="bg-white"
 				/>
 				<IconButton
 					icon={<RectangleLandscapeFilled />}
-					color={shapeButtonColor}
+					color={UXColor.Purple}
 					disabled={maxReached}
 					handleClick={() => props.createShape(S.Rectangle, Color.Purple)}
+					background="bg-white"
 				/>
 				<IconButton
 					icon={<ShapesFilled />}
@@ -184,6 +203,20 @@ export function Toolbar(props: {
 					handleClick={() => props.deleteAllShapes()}
 				/>
 			</ButtonGroup>
+			<ButtonGroup>
+				<IconButton
+					icon={<ArrowUndoFilled />}
+					color={shapeButtonColor}
+					disabled={false}
+					handleClick={() => props.undoRedo.undo()}
+				/>
+				<IconButton
+					icon={<ArrowRedoFilled />}
+					color={shapeButtonColor}
+					disabled={false}
+					handleClick={() => props.undoRedo.redo()}
+				/>
+			</ButtonGroup>
 		</ButtonBar>
 	);
 }
@@ -201,15 +234,7 @@ export function Canvas(props: { pixiApp: Application }): JSX.Element {
 	);
 }
 
-export function StatusBar(props: {
-	audience: IAzureAudience;
-	toggleSignals: any;
-	signals: () => boolean;
-	localShapes: Shapes;
-	shapeTree: TreeView<typeof FluidShapes>;
-	pixiApp: Application;
-	fluidContainer: IFluidContainer;
-}) {
+export function StatusBar(props: { toggleSignals: any; signals: () => boolean }) {
 	const [, setChecked] = React.useState(props.signals());
 
 	const handleChange = () => {
@@ -240,17 +265,13 @@ export function StatusBar(props: {
 	);
 }
 
-export function ShapeCount(props: {
-	pixiApp: Application;
-	shapeTree: TreeView<typeof FluidShapes>;
-}) {
+export function ShapeCount(props: { canvas: Container; shapeTree: TreeView<typeof FluidShapes> }) {
 	const [fluidCount, setFluidCount] = useState(props.shapeTree.root.length);
-	const [localCount, setLocalCount] = useState(props.pixiApp.stage.children.length);
+	const [localCount, setLocalCount] = useState(props.canvas.children.length);
 
 	useEffect(() => {
 		Tree.on(props.shapeTree.root, "nodeChanged", () => {
-			setFluidCount(props.shapeTree.root.length),
-				setLocalCount(props.pixiApp.stage.children.length);
+			setFluidCount(props.shapeTree.root.length), setLocalCount(props.canvas.children.length);
 		});
 	}, []);
 
@@ -324,7 +345,8 @@ export function Header(props: {
 	shapeTree: TreeView<typeof FluidShapes>;
 	fluidContainer: IFluidContainer;
 	audience: IAzureAudience;
-	pixiApp: Application;
+	feltApplication: FeltApplication;
+	canvas: Container;
 }): JSX.Element {
 	return (
 		<div className="h-[48px] flex shrink-0 flex-row items-center justify-between bg-black text-base text-white z-40 w-full">
@@ -371,11 +393,7 @@ export function IconButton(props: {
 
 	return (
 		<button
-			className={`transition hover:scale-150 ${props.color} ${props.background} ${
-				props.background === IconButton.defaultProps.background
-					? "hover:bg-gray-600"
-					: "hover:bg-white"
-			} font-bold p-1 rounded inline-flex items-center h-6 w-6 grow`}
+			className={`transition hover:scale-150 ${props.color} ${props.background} font-bold p-1 rounded inline-flex items-center h-6 w-6 grow`}
 			onClick={(e) => handleClick(e)}
 		>
 			{props.icon}
@@ -385,8 +403,8 @@ export function IconButton(props: {
 }
 
 IconButton.defaultProps = {
-	color: "text-gray-600",
-	background: "bg-transparent",
+	color: "text-white",
+	background: "bg-gray-600",
 };
 
 function IconButtonText(props: { children: React.ReactNode }): JSX.Element {
