@@ -131,7 +131,7 @@ export class FeltShape extends Graphics {
 			if (this.dragging) {
 				this.canvas.off("pointermove", onDragMove);
 				this.dragging = false;
-				const pos = clampXY(event.x, event.y);
+				const pos = clampXY(event.screenX, event.screenY);
 				this.updateFluidLocation(pos.x, pos.y); // syncs local changes with Fluid data - note that this call uses the current position to fix a big where the shape shifts on selection
 			}
 		};
@@ -140,7 +140,7 @@ export class FeltShape extends Graphics {
 			event.stopPropagation();
 			event.propagationStopped;
 			if (this.dragging) {
-				const pos = clampXY(event.data.global.x, event.data.global.y);
+				const pos = clampXY(event.screenX, event.screenY);
 				this.updateFluidLocation(pos.x, pos.y);
 			}
 		};
