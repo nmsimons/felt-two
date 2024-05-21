@@ -11,7 +11,7 @@ import { Signaler } from "@fluid-experimental/data-objects";
 // initial DataObjects we want created when the container is first created.
 export const containerSchema = {
 	initialObjects: {
-		signalManager: Signaler,
+		signalManager: Signaler as any,
 		appData: SharedTree,
 		sessionData: SharedTree,
 	},

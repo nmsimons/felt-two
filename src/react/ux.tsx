@@ -7,7 +7,7 @@
 import React, { useEffect, useState } from "react";
 import { IAzureAudience } from "@fluidframework/azure-client";
 import { Color, ShapeType as S, UXColor } from "../utils/utils.js";
-import { Shapes } from "../utils/shapes.js";
+import { ShapesMap } from "../utils/shapes.js";
 import { ConnectionState, IFluidContainer, Tree, TreeView } from "fluid-framework";
 import { Shapes as FluidShapes } from "../schema/app_schema.js";
 import { FeltApplication as FeltApplication } from "../utils/application.js";
@@ -86,8 +86,8 @@ export function Toolbar(props: {
 	deleteAllShapes: any;
 	bringToFront: any;
 	audience: IAzureAudience;
-	selectionManager: Shapes;
-	localShapes: Shapes;
+	selectionManager: ShapesMap;
+	localShapes: ShapesMap;
 	undoRedo: undoRedo;
 }) {
 	const shapeButtonColor = "black";

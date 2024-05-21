@@ -5,26 +5,21 @@ import { Signaler, SignalListener } from "@fluid-experimental/data-objects";
 import { IAzureAudience } from "@fluidframework/azure-client";
 import { v4 as uuid } from "uuid";
 import { Shape, Shapes } from "../schema/app_schema.js";
-import { FeltShape, shapeLimit, Shapes as PIXIShapes, createShapeNode } from "./shapes.js";
+import { FeltShape, shapeLimit, ShapesMap, createShapeNode } from "./shapes.js";
 import { Color, getNextColor, getNextShape, getRandomInt, ShapeType } from "./utils.js";
 import { clearPresence, removeUserFromPresenceArray } from "./presence.js";
-import {
-	Container,
-	FederatedPointerEvent,
-	Graphics,
-	Application as PIXIApplication,
-} from "pixi.js";
+import { Container, FederatedPointerEvent, Application as PIXIApplication } from "pixi.js";
 import { ConnectionState, IFluidContainer, IMember, Tree, TreeView } from "fluid-framework";
 import { Signal2Pixi, SignalPackage, Signals } from "./wrappers.js";
 
 export class FeltApplication {
 	private constructor(
 		public pixiApp: PIXIApplication,
-		public selection: PIXIShapes,
+		public selection: ShapesMap,
 		public audience: IAzureAudience,
 		public useSignals: boolean,
 		public signaler: Signaler,
-		public localShapes: PIXIShapes,
+		public localShapes: ShapesMap,
 		public shapeTree: TreeView<typeof Shapes>,
 		public container: IFluidContainer,
 	) {
@@ -77,11 +72,11 @@ export class FeltApplication {
 		signaler: Signaler,
 	): Promise<FeltApplication> {
 		// create a local map for shapes - contains customized PIXI objects
-		const localShapes = new PIXIShapes(shapeLimit);
+		const localShapes = new ShapesMap(shapeLimit);
 
 		// initialize the selection object (a custom map) which is used to manage local selection and is passed
 		// to the React app for state and events
-		const selection = new PIXIShapes(shapeLimit);
+		const selection = new ShapesMap(shapeLimit);
 
 		// create PIXI app
 		const pixiApp = await this.createPixiApp();
@@ -301,7 +296,7 @@ export class FeltApplication {
 		this.localShapes.delete(shape.id);
 
 		// Remove the shape from the selection map
-		this.selection.delete(shape.id);
+		// this.selection.delete(shape.id);
 
 		// Remove the shape from the canvas
 		this.canvas.removeChild(shape);
@@ -327,6 +322,7 @@ export class FeltApplication {
 		console.log("UPDATING ALL SHAPES: ");
 		const seenIds = new Set<string>();
 		for (const shape of this.shapeTree.root) {
+			console.log(shape.id, "Seen");
 			seenIds.add(shape.id);
 			let localShape = this.localShapes.get(shape.id);
 			if (localShape === undefined) {

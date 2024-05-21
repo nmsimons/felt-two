@@ -32,7 +32,7 @@ export function createShapeNode(
 }
 
 // defines a custom map for storing local shapes that fires an event when the map changes
-export class Shapes extends Map<string, FeltShape> {
+export class ShapesMap extends Map<string, FeltShape> {
 	private _cbs: Array<() => void> = [];
 
 	public onChanged(cb: () => void) {
@@ -137,7 +137,7 @@ export class FeltShape extends Container {
 				this.canvas.off("pointerup", onDragEnd);
 				this.canvas.off("pointerupoutside", onDragEnd);
 				this.dragging = false;
-				this.updateFluidLocation(this.x, this.y); // syncs local changes with Fluid data - note that this call uses the current position to fix a big where the shape shifts on selection
+				this.updateFluidLocation(this.x, this.y);
 			}
 		};
 
@@ -188,7 +188,9 @@ export class FeltShape extends Container {
 		const parent = Tree.parent(this.shape);
 		if (Tree.is(parent, FluidShapes)) {
 			console.log(this.shape.id, "BringToFront");
-			parent.moveToEnd(Tree.key(this.shape) as number);
+			Tree.runTransaction(this.shape, () => {
+				parent.moveToEnd(Tree.key(this.shape) as number);
+			});
 		}
 	}
 
