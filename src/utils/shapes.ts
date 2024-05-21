@@ -82,7 +82,10 @@ export class FeltShape extends Container {
 	private _selectionFrame: Graphics | undefined;
 	private _presenceFrame: Graphics | undefined;
 	private _shape: Graphics;
+	private _text: Text;
 	public readonly id: string;
+
+	public dirty = false;
 
 	constructor(
 		private canvas: Container,
@@ -97,6 +100,7 @@ export class FeltShape extends Container {
 		this.id = this.shape.id;
 		this.label = this.shape.id;
 		this._shape = new Graphics();
+		this._text = this.drawLabel(this.z.toString());
 
 		this.initProperties();
 		this.initPixiShape();
@@ -110,6 +114,7 @@ export class FeltShape extends Container {
 		this._shape.fill(0xffffff);
 		this.interactive = true;
 		this.addChild(this._shape);
+		this.addChild(this._text);
 		this.canvas.addChild(this);
 	};
 
@@ -176,6 +181,11 @@ export class FeltShape extends Container {
 		this.on("pointerdown", onDragStart).on("pointerdown", onSelect);
 	};
 
+	public update() {
+		this.dirty = false;
+		this.sync();
+	}
+
 	set color(color: Color) {
 		this.shape.color = color;
 	}
@@ -189,6 +199,7 @@ export class FeltShape extends Container {
 		if (Tree.is(parent, FluidShapes)) {
 			console.log(this.shape.id, "BringToFront");
 			Tree.runTransaction(this.shape, () => {
+				this.dirty = true;
 				parent.moveToEnd(Tree.key(this.shape) as number);
 			});
 		}
@@ -197,6 +208,7 @@ export class FeltShape extends Container {
 	public sendToBack() {
 		const parent = Tree.parent(this.shape);
 		if (Tree.is(parent, FluidShapes)) {
+			this.dirty = true;
 			parent.moveToStart(Tree.key(this.shape) as number);
 		}
 	}
@@ -205,6 +217,7 @@ export class FeltShape extends Container {
 		const parent = Tree.parent(this.shape);
 		if (Tree.is(parent, FluidShapes)) {
 			if (parent.length > (Tree.key(this.shape) as number)) {
+				this.dirty = true;
 				parent.moveToIndex(
 					Tree.key(this.shape) as number,
 					(Tree.key(this.shape) as number) + 1,
@@ -217,6 +230,7 @@ export class FeltShape extends Container {
 		const parent = Tree.parent(this.shape);
 		if (Tree.is(parent, FluidShapes)) {
 			if (0 < (Tree.key(this.shape) as number)) {
+				this.dirty = true;
 				parent.moveToIndex(
 					Tree.key(this.shape) as number,
 					(Tree.key(this.shape) as number) - 1,
@@ -251,6 +265,7 @@ export class FeltShape extends Container {
 		this.x = this.shape.x;
 		this.y = this.shape.y;
 		this.zIndex = this.z;
+		this._text.text = this.z.toString();
 		this._shape.tint = Number(this.color);
 
 		const me: AzureMember | undefined = this.audience.getMyself();
@@ -355,6 +370,20 @@ export class FeltShape extends Container {
 
 	private removePresence() {
 		this._presenceFrame?.clear().removeChildren();
+	}
+
+	private drawLabel(value: string): Text {
+		const style = new TextStyle({
+			align: "center",
+			fill: "white",
+			fontFamily: "Comic Sans MS",
+			fontSize: 16,
+			textBaseline: "bottom",
+		});
+		const text = new Text({ text: value, style });
+		text.x = -text.width / 2;
+		text.y = -text.height / 2;
+		return text;
 	}
 
 	private drawFrame(

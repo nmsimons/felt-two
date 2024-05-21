@@ -296,12 +296,13 @@ export class FeltApplication {
 		this.localShapes.delete(shape.id);
 
 		// Remove the shape from the selection map
-		// this.selection.delete(shape.id);
+		this.selection.delete(shape.id);
 
 		// Remove the shape from the canvas
 		this.canvas.removeChild(shape);
 
 		// Destroy the local shape object
+		// Except don't do this because it causes a crash
 		// shape.destroy();
 	};
 
@@ -322,19 +323,18 @@ export class FeltApplication {
 		console.log("UPDATING ALL SHAPES: ");
 		const seenIds = new Set<string>();
 		for (const shape of this.shapeTree.root) {
-			console.log(shape.id, "Seen");
 			seenIds.add(shape.id);
 			let localShape = this.localShapes.get(shape.id);
 			if (localShape === undefined) {
 				localShape = this.addNewLocalShape(shape);
-				console.log(shape.id, "Added");
+			} else if (localShape.zIndex !== Tree.key(shape)) {
+				localShape.update();
 			}
 		}
 
 		// delete local shapes that no longer exist
 		this.localShapes.forEach((shape: FeltShape) => {
 			if (!seenIds.has(shape.id)) {
-				console.log(shape.id, "DELETED");
 				this.deleteLocalShape(this.localShapes.get(shape.id)!);
 			}
 		});

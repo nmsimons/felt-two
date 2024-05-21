@@ -72,7 +72,6 @@ export function ReactApp(props: {
 			<Header {...appProps} />
 			<Toolbar {...appProps} />
 			<Canvas {...appProps} />
-			<StatusBar {...appProps} />
 		</div>
 	);
 }
@@ -234,7 +233,7 @@ export function Canvas(props: { pixiApp: Application }): JSX.Element {
 	);
 }
 
-export function StatusBar(props: { toggleSignals: any; signals: () => boolean }) {
+export function SignalsToggle(props: { toggleSignals: any; signals: () => boolean }) {
 	const [, setChecked] = React.useState(props.signals());
 
 	const handleChange = () => {
@@ -243,24 +242,18 @@ export function StatusBar(props: { toggleSignals: any; signals: () => boolean })
 	};
 
 	return (
-		<div className="level mb-0 mt-0">
-			<div className="level-left">
-				<div className="level-item">
-					<div className="field mt-0 mb-0">
-						<input
-							id="switchRoundedInfo"
-							type="checkbox"
-							name="switchRoundedInfo"
-							className="switch is-rounded is-info"
-							checked={props.signals()}
-							onChange={handleChange}
-						/>
-						<label className="mb-3 mt-0" htmlFor="switchRoundedInfo">
-							Use signals
-						</label>
-					</div>
-				</div>
-			</div>
+		<div className="">
+			<label className="pr-2" htmlFor="switchRoundedInfo">
+				Use signals:
+			</label>
+			<input
+				id="switchRoundedInfo"
+				type="checkbox"
+				name="switchRoundedInfo"
+				className="p-2"
+				checked={props.signals()}
+				onChange={handleChange}
+			/>
 		</div>
 	);
 }
@@ -347,11 +340,14 @@ export function Header(props: {
 	audience: IAzureAudience;
 	feltApplication: FeltApplication;
 	canvas: Container;
+	toggleSignals: any;
+	signals: () => boolean;
 }): JSX.Element {
 	return (
 		<div className="h-[48px] flex shrink-0 flex-row items-center justify-between bg-black text-base text-white z-40 w-full">
 			<div className="flex m-2">Felt</div>
-			<div className="flex m-2 gap-2 ">
+			<div className="flex m-2 gap-4 ">
+				<SignalsToggle {...props} />
 				<ShapeCount {...props} />
 				<ConnectionStatus {...props} />
 				<Audience {...props} />
