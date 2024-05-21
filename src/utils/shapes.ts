@@ -76,7 +76,7 @@ export class Shapes extends Map<string, FeltShape> {
 
 // wrapper class for a PIXI shape with a few extra methods and properties
 // for creating and managing shapes
-export class FeltShape extends Graphics {
+export class FeltShape extends Container {
 	dragging = false;
 	static readonly size: number = 60;
 	private _selectionFrame: Graphics | undefined;
@@ -95,6 +95,7 @@ export class FeltShape extends Graphics {
 	) {
 		super();
 		this.id = this.shape.id;
+		this.label = this.shape.id;
 		this._shape = new Graphics();
 
 		this.initProperties();
@@ -119,59 +120,60 @@ export class FeltShape extends Graphics {
 		this.zIndex = this.z;
 	};
 
+	private _offset: { x: number; y: number } = { x: 0, y: 0 };
+
 	private initUserEvents = () => {
 		const onDragStart = (event: FederatedPointerEvent) => {
-			event.stopPropagation();
 			this.dragging = true;
+			this._offset = calculateOffset(event);
+			this.canvas.on("pointerup", onDragEnd);
+			this.canvas.on("pointerupoutside", onDragEnd);
 			this.canvas.on("pointermove", onDragMove);
 		};
 
 		const onDragEnd = (event: FederatedPointerEvent) => {
-			event.stopPropagation();
 			if (this.dragging) {
 				this.canvas.off("pointermove", onDragMove);
+				this.canvas.off("pointerup", onDragEnd);
+				this.canvas.off("pointerupoutside", onDragEnd);
 				this.dragging = false;
-				const pos = clampXY(event.screenX, event.screenY);
-				this.updateFluidLocation(pos.x, pos.y); // syncs local changes with Fluid data - note that this call uses the current position to fix a big where the shape shifts on selection
+				this.updateFluidLocation(this.x, this.y); // syncs local changes with Fluid data - note that this call uses the current position to fix a big where the shape shifts on selection
 			}
 		};
 
 		const onDragMove = (event: FederatedPointerEvent) => {
-			event.stopPropagation();
-			event.propagationStopped;
 			if (this.dragging) {
-				const pos = clampXY(event.screenX, event.screenY);
+				const pos = calculatePosition(event);
+				console.log("pos", pos.x, pos.y);
 				this.updateFluidLocation(pos.x, pos.y);
 			}
 		};
 
+		// calculate the position of the pointer relative to the shape's origin
+		// this is used to ensure the shape moves smoothly with the pointer
+		// when dragging
+		const calculatePosition = (event: FederatedPointerEvent): { x: number; y: number } => {
+			return {
+				x: event.x - this._offset.x,
+				y: event.y - this._offset.y,
+			};
+		};
+
+		// calculate the offset of the pointer from the shape's origin
+		// this is used to ensure the shape moves smoothly with the pointer
+		// when dragging
+		const calculateOffset = (event: FederatedPointerEvent): { x: number; y: number } => {
+			return {
+				x: event.x - this.x,
+				y: event.y - this.y,
+			};
+		};
+
 		const onSelect = (event: FederatedPointerEvent) => {
-			event.stopPropagation();
 			this.select();
 		};
 
-		const clampXY = (x: number, y: number): { x: number; y: number } => {
-			if (
-				x < this._shape.width / 2 ||
-				x > this.canvas.boundsArea.width - this._shape.width / 2
-			) {
-				x = this.x;
-			}
-
-			if (
-				y < this._shape.height / 2 ||
-				y > this.canvas.boundsArea.height - this._shape.height / 2
-			) {
-				y = this.y;
-			}
-			return { x, y };
-		};
-
-		this.canvas.eventMode = "static";
-		this.canvas.hitArea = this.canvas.boundsArea;
 		// intialize event handlers
-		this.canvas.on("pointerup", onDragEnd);
-		this.canvas.on("pointerupoutside", onDragEnd);
 		this.on("pointerdown", onDragStart).on("pointerdown", onSelect);
 	};
 

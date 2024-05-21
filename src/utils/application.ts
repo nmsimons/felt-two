@@ -29,7 +29,7 @@ export class FeltApplication {
 		public container: IFluidContainer,
 	) {
 		// Initialize the canvas container
-		this._canvas = FeltApplication.createScaledContainer(pixiApp, () => {
+		this._canvas = FeltApplication.createCanvasContainer(pixiApp, () => {
 			this.clearSelection();
 			clearPresence(audience.getMyself()?.id!);
 		});
@@ -123,33 +123,36 @@ export class FeltApplication {
 	}
 
 	// Create a new scaled container
-	private static createScaledContainer = (
+	private static createCanvasContainer = (
 		app: PIXIApplication,
 		clearSelectionAndPresence: (event: FederatedPointerEvent) => void,
 	) => {
 		// This is the stage for the new scene
-		const container = new Container();
+		const canvasContainer = new Container();
 
 		// Set the size of the container to the size of the stage
-		container.width = app.canvas.width;
-		container.height = app.canvas.height;
-		container.position.set(app.stage.x, app.stage.y);
-		container.boundsArea = app.screen;
+		canvasContainer.width = app.canvas.width;
+		canvasContainer.height = app.canvas.height;
+		canvasContainer.position.set(app.stage.x, app.stage.y);
+		canvasContainer.boundsArea = app.screen;
 
-		container.interactive = true;
-		container.interactiveChildren = true;
+		canvasContainer.interactive = true;
+		canvasContainer.interactiveChildren = true;
 
-		container.sortableChildren = true;
-		container.label = "canvas";
+		canvasContainer.sortableChildren = true;
+		canvasContainer.label = "canvas";
 
-		container.on("pointerup", (event) => {
+		canvasContainer.eventMode = "static";
+		canvasContainer.hitArea = canvasContainer.boundsArea;
+
+		canvasContainer.on("pointerup", (event) => {
 			if (event.target.label === "canvas") {
 				clearSelectionAndPresence(event);
 			}
 		});
 
-		app.stage.addChild(container);
-		return container;
+		app.stage.addChild(canvasContainer);
+		return canvasContainer;
 	};
 
 	private _canvas: Container;
