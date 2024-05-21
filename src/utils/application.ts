@@ -28,12 +28,6 @@ export class FeltApplication {
 		public shapeTree: TreeView<typeof Shapes>,
 		public container: IFluidContainer,
 	) {
-		// make background clickable
-		FeltApplication.addBackgroundShape(() => {
-			this.clearSelection();
-			clearPresence(audience.getMyself()?.id!);
-		}, pixiApp);
-
 		// Initialize the canvas container
 		this._canvas = FeltApplication.createScaledContainer(pixiApp, () => {
 			this.clearSelection();
@@ -122,7 +116,7 @@ export class FeltApplication {
 			width: 600,
 			height: 600,
 			autoDensity: true, // Handles high DPI screens
-			backgroundColor: 0xffffff,
+			backgroundColor: 0x000000,
 		});
 
 		return app;
@@ -146,11 +140,15 @@ export class FeltApplication {
 		container.interactiveChildren = true;
 
 		container.sortableChildren = true;
+		container.label = "canvas";
 
-		// container.on("pointerup", (event) => clearSelectionAndPresence(event));
+		container.on("pointerup", (event) => {
+			if (event.target.label === "canvas") {
+				clearSelectionAndPresence(event);
+			}
+		});
 
 		app.stage.addChild(container);
-
 		return container;
 	};
 
@@ -174,20 +172,6 @@ export class FeltApplication {
 		const { width, height } = app.screen;
 		const isHeightConstrained = width > height;
 		return isHeightConstrained ? height : width;
-	};
-
-	private static addBackgroundShape = (
-		clearSelectionAndPresence: (event: FederatedPointerEvent) => void,
-		app: PIXIApplication,
-	) => {
-		const bg: Graphics = new Graphics();
-		bg.rect(0, 0, app.canvas.width, app.canvas.height);
-		bg.fill(0x000000);
-		bg.interactive = true;
-
-		app.stage.addChild(bg);
-
-		bg.on("pointerup", (event) => clearSelectionAndPresence(event));
 	};
 
 	public get fluidConnectionState(): ConnectionState {
