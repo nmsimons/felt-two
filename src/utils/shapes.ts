@@ -144,7 +144,6 @@ export class FeltShape extends Container {
 		const onDragMove = (event: FederatedPointerEvent) => {
 			if (this.dragging) {
 				const pos = calculatePosition(event);
-				console.log("pos", pos.x, pos.y);
 				this.updateFluidLocation(pos.x, pos.y);
 			}
 		};
