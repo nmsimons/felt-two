@@ -269,7 +269,7 @@ export class FeltApplication {
 				for (const id of client.selected) {
 					// Find the local shape object by id in the canvas
 					const shape = this.canvas.getChildByLabel(id) as FeltShape | undefined;
-					if (shape !== undefined) {
+					if (shape instanceof FeltShape) {
 						f(shape);
 					}
 				}
@@ -304,6 +304,9 @@ export class FeltApplication {
 
 	// Called when a shape is deleted in the Fluid Data
 	public deleteLocalShape = (shape: FeltShape): void => {
+		// Remove the shape from the selection tree
+		this.clearFluidSelectionForShape(shape);
+
 		// Remove the shape from the canvas
 		this.canvas.removeChild(shape);
 
@@ -343,6 +346,18 @@ export class FeltApplication {
 
 		if (client !== undefined) {
 			client.selected.removeRange();
+		}
+	};
+
+	// Clear the Fluid selection for a specific shape
+	public clearFluidSelectionForShape = (shape: FeltShape): void => {
+		const client = this.selection.root.clients.find(
+			(client) => client.clientId === this.audience.getMyself()?.id,
+		);
+
+		if (client !== undefined) {
+			const i = Tree.key(shape.shape) as number;
+			client.selected.removeAt(i);
 		}
 	};
 
@@ -396,6 +411,7 @@ export class FeltApplication {
 
 		// create an array of the shapes that need to be deleted
 		const shapesToDelete = this.canvas.children.filter((child) => !seenIds.has(child.label));
+		if (shapesToDelete.length === 0) return;
 
 		// iterate over the array and delete the shapes
 		for (const child of shapesToDelete) {

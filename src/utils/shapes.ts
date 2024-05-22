@@ -78,11 +78,11 @@ export class FeltShape extends Container {
 
 	private initUserEvents = () => {
 		const onDragStart = (event: FederatedPointerEvent) => {
-			this.dragging = true;
 			this._offset = calculateOffset(event);
 			this.canvas.on("pointerup", onDragEnd);
 			this.canvas.on("pointerupoutside", onDragEnd);
 			this.canvas.on("pointermove", onDragMove);
+			this.dragging = true;
 		};
 
 		const onDragEnd = (event: FederatedPointerEvent) => {
@@ -131,7 +131,7 @@ export class FeltShape extends Container {
 		};
 
 		// intialize event handlers
-		this.on("pointerdown", onDragStart).on("pointerdown", onSelect);
+		this.on("pointerdown", onSelect).on("pointerdown", onDragStart);
 	};
 
 	public set showIndex(value: boolean) {
