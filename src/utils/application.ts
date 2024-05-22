@@ -357,7 +357,7 @@ export class FeltApplication {
 
 		if (client !== undefined) {
 			const i = client.selected.findIndex((id) => id === shape.id);
-			client.selected.removeAt(i);
+			if (i !== -1) client.selected.removeAt(i);
 		}
 	};
 
