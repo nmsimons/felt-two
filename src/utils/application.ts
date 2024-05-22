@@ -5,28 +5,27 @@ import { Signaler, SignalListener } from "@fluid-experimental/data-objects";
 import { IAzureAudience } from "@fluidframework/azure-client";
 import { v4 as uuid } from "uuid";
 import { Shape, Shapes } from "../schema/app_schema.js";
-import { FeltShape, shapeLimit, ShapesMap, createShapeNode } from "./shapes.js";
+import { FeltShape, createShapeNode } from "./shapes.js";
 import { Color, getNextColor, getNextShape, getRandomInt, ShapeType } from "./utils.js";
-import { clearPresence, removeUserFromPresenceArray } from "./presence.js";
 import { Container, FederatedPointerEvent, Application as PIXIApplication } from "pixi.js";
 import { ConnectionState, IFluidContainer, IMember, Tree, TreeView } from "fluid-framework";
 import { Signal2Pixi, SignalPackage, Signals } from "./wrappers.js";
+import { Client, Session } from "../schema/session_schema.js";
 
 export class FeltApplication {
 	private constructor(
 		public pixiApp: PIXIApplication,
-		public selection: ShapesMap,
+		public selection: TreeView<typeof Session>,
 		public audience: IAzureAudience,
 		public useSignals: boolean,
 		public signaler: Signaler,
-		public localShapes: ShapesMap,
 		public shapeTree: TreeView<typeof Shapes>,
 		public container: IFluidContainer,
+		public maxShapes: number = 1000,
 	) {
 		// Initialize the canvas container
 		this._canvas = FeltApplication.createCanvasContainer(pixiApp, () => {
-			this.clearSelection();
-			clearPresence(audience.getMyself()?.id!);
+			this.clearFluidSelection();
 		});
 
 		// Get all existing shapes
@@ -38,13 +37,15 @@ export class FeltApplication {
 			this.updateAllShapes();
 		});
 
+		// event handler for detecting changes to the selection data and updating
+		Tree.on(selection.root, "treeChanged", () => {
+			this.updateLocalSelectionAndPresence();
+		});
+
 		// When a user leaves the session, remove all that users presence data from
 		// the presence shared map. Note, all clients run this code right now
-		audience.on("memberRemoved", (clientId: string, member: IMember) => {
-			console.log(member.id, "JUST LEFT");
-			for (const shape of shapeTree.root) {
-				removeUserFromPresenceArray({ userId: member.id, shape });
-			}
+		audience.on("membersChanged", () => {
+			this.updateLocalSelectionAndPresence();
 		});
 
 		// When shapes are dragged, instead of updating the Fluid data, we send a Signal using fluid. This function will
@@ -55,7 +56,7 @@ export class FeltApplication {
 			payload: SignalPackage,
 		) => {
 			if (!local) {
-				const localShape = localShapes.get(payload.id);
+				const localShape = this.canvas.getChildByLabel(payload.id) as FeltShape | undefined;
 				if (localShape) {
 					Signal2Pixi(localShape, payload);
 				}
@@ -70,14 +71,8 @@ export class FeltApplication {
 		container: IFluidContainer,
 		audience: IAzureAudience,
 		signaler: Signaler,
+		selection: TreeView<typeof Session>,
 	): Promise<FeltApplication> {
-		// create a local map for shapes - contains customized PIXI objects
-		const localShapes = new ShapesMap(shapeLimit);
-
-		// initialize the selection object (a custom map) which is used to manage local selection and is passed
-		// to the React app for state and events
-		const selection = new ShapesMap(shapeLimit);
-
 		// create PIXI app
 		const pixiApp = await this.createPixiApp();
 
@@ -87,7 +82,6 @@ export class FeltApplication {
 			audience,
 			true,
 			signaler,
-			localShapes,
 			shapeTree,
 			container,
 		);
@@ -102,8 +96,6 @@ export class FeltApplication {
 
 	// initialize the PIXI app
 	private static async initPixiApp() {
-		// settings.RESOLUTION = window.devicePixelRatio || 1;
-
 		// The PixiJS application instance
 		const app = new PIXIApplication();
 
@@ -156,22 +148,6 @@ export class FeltApplication {
 		return this._canvas;
 	}
 
-	private static WIDTH = 500;
-
-	private static HEIGHT = 500;
-
-	private static actualWidth = (app: PIXIApplication) => {
-		const { width, height } = app.screen;
-		const isWidthConstrained = width < height;
-		return isWidthConstrained ? width : height;
-	};
-
-	private static actualHeight = (app: PIXIApplication) => {
-		const { width, height } = app.screen;
-		const isHeightConstrained = width > height;
-		return isHeightConstrained ? height : width;
-	};
-
 	public get fluidConnectionState(): ConnectionState {
 		return this.container.connectionState;
 	}
@@ -191,26 +167,29 @@ export class FeltApplication {
 		const feltShape = new FeltShape(
 			this.canvas,
 			shape,
-			(userId: string) => {
-				clearPresence(userId);
+			(shape: FeltShape) => {
+				this.clearFluidSelection();
+				this.setFluidSelection(shape);
 			},
 			(shape: FeltShape) => {
-				this.clearSelection();
-				this.selection.set(shape.id, shape);
+				this.setFluidSelection(shape);
 			},
 			this.audience,
 			this.getUseSignals,
 			this.signaler,
 		);
 
-		this.localShapes.set(shape.id, feltShape); // add the new shape to local data
-
 		return feltShape;
 	};
 
+	// Return a bool indicating if the max number of shapes has been reached
+	public get maxReached(): boolean {
+		return this.shapeTree.root.length >= this.maxShapes;
+	}
+
 	// function passed into React UX for creating shapes
 	public createShape = (shapeType: ShapeType, color: Color): void => {
-		if (this.localShapes.maxReached) return;
+		if (this.maxReached) return;
 
 		const shape = createShapeNode(
 			shapeType,
@@ -225,6 +204,7 @@ export class FeltApplication {
 
 	// function passed into React UX for creating lots of different shapes at once
 	public createLotsOfShapes = (amount: number): void => {
+		if (this.maxReached) return;
 		Tree.runTransaction(this.shapeTree.root, () => {
 			let shapeType = ShapeType.Circle;
 			let color = Color.Red;
@@ -234,7 +214,7 @@ export class FeltApplication {
 				shapeType = getNextShape(shapeType);
 				color = getNextColor(color);
 
-				if (this.localShapes.size < shapeLimit) {
+				if (this.shapeTree.root.length + shapes.length < this.maxShapes) {
 					const shape = createShapeNode(
 						shapeType,
 						color,
@@ -250,11 +230,6 @@ export class FeltApplication {
 		});
 	};
 
-	// Function passed to React to change the color of selected shapes
-	public changeColorofSelected = (color: Color): void => {
-		this.changeSelectedShapes((shape: FeltShape) => this.changeColor(shape, color));
-	};
-
 	// Changes the color of a shape and syncs with the Fluid data
 	public changeColor = (shape: FeltShape, color: Color): void => {
 		shape.color = color;
@@ -264,16 +239,30 @@ export class FeltApplication {
 	// for each shape
 	public changeSelectedShapes = (f: Function): void => {
 		Tree.runTransaction(this.shapeTree.root, () => {
-			if (this.selection.size > 0) {
-				this.selection.forEach((value: FeltShape | undefined, key: string) => {
-					if (value !== undefined) {
-						f(value);
+			// Find the client object for the current client from the selection tree by clientId
+			const client = this.selection.root.clients.find(
+				(client) => client.clientId === this.audience.getMyself()?.id,
+			);
+			console.log("CLIENT: ", client?.clientId);
+
+			if (client !== undefined && client !== null && client.selected.length > 0) {
+				for (const id of client.selected) {
+					// Find the local shape object by id in the canvas
+					const shape = this.canvas.getChildByLabel(id) as FeltShape | undefined;
+
+					if (shape !== undefined) {
+						f(shape);
 					} else {
-						this.selection.delete(key);
+						console.log("Shape not found");
 					}
-				});
+				}
 			}
 		});
+	};
+
+	// Function passed to React to change the color of selected shapes
+	public changeColorofSelected = (color: Color): void => {
+		this.changeSelectedShapes((shape: FeltShape) => this.changeColor(shape, color));
 	};
 
 	// Function passed to React to delete selected shapes
@@ -281,23 +270,23 @@ export class FeltApplication {
 		this.changeSelectedShapes((shape: FeltShape) => this.deleteShape(shape));
 	};
 
+	public bringSelectedToFront = (): void => {
+		this.changeSelectedShapes(
+			(shape: FeltShape) => this.bringToFront(shape), // fix this
+		);
+	};
+
 	public deleteAllShapes = (): void => {
 		this.shapeTree.root.removeRange();
 	};
 
 	private deleteShape = (shape: FeltShape): void => {
-		const i = Tree.key(shape.shape) as number;
-		this.shapeTree.root.removeAt(i);
+		const i = Tree.key(shape.shape);
+		this.shapeTree.root.removeAt(i as number);
 	};
 
 	// Called when a shape is deleted in the Fluid Data
 	public deleteLocalShape = (shape: FeltShape): void => {
-		// Remove shape from local map
-		this.localShapes.delete(shape.id);
-
-		// Remove the shape from the selection map
-		this.selection.delete(shape.id);
-
 		// Remove the shape from the canvas
 		this.canvas.removeChild(shape);
 
@@ -306,17 +295,75 @@ export class FeltApplication {
 		// shape.destroy();
 	};
 
-	public bringSelectedToFront = (): void => {
-		this.changeSelectedShapes(
-			(shape: FeltShape) => shape.bringToFront(), // fix this
-		);
+	public bringToFront = (shape: FeltShape): void => {
+		shape.bringToFront();
 	};
 
-	public clearSelection = (): void => {
-		this.selection.forEach((value: FeltShape) => {
-			value.unselect();
-		});
-		this.selection.clear();
+	public setFluidSelection = (shape: FeltShape): void => {
+		console.log("SETTING FLUID SELECTION: ");
+		let client = this.selection.root.clients.find(
+			(client) => client.clientId === this.audience.getMyself()?.id,
+		);
+
+		if (client === undefined || client === null) {
+			client = new Client({
+				clientId: this.audience.getMyself()?.id!,
+				selected: [],
+			});
+			this.selection.root.clients.insertAtEnd(client);
+		}
+
+		if (client !== undefined && client !== null) {
+			if (!client.selected.includes(shape.id)) {
+				client.selected.insertAtEnd(shape.id);
+			}
+		}
+		console.log(this.selection.root.clients.length);
+	};
+
+	public clearFluidSelection = (): void => {
+		console.log("CLEARING FLUID SELECTION: ");
+		const client = this.selection.root.clients.find(
+			(client) => client.clientId === this.audience.getMyself()?.id,
+		);
+
+		if (client !== undefined) {
+			client.selected.removeRange();
+		}
+	};
+
+	public clearLocalSelectionAndPresence = (): void => {
+		// iterate over the items in the canvas and remove the selection
+		for (const child of this.canvas.children) {
+			if (child instanceof FeltShape) {
+				child.removeSelection();
+				child.removePresence();
+			}
+		}
+	};
+
+	public updateLocalSelectionAndPresence = (): void => {
+		this.clearLocalSelectionAndPresence();
+		// iterate over the selection array and updates the selection
+		for (const client of this.selection.root.clients) {
+			if (client.clientId === this.audience.getMyself()?.id) {
+				for (const id of client.selected) {
+					const localShape = this.canvas.getChildByLabel(id) as FeltShape | undefined;
+					if (localShape !== undefined && localShape !== null) {
+						localShape.showSelection();
+					}
+				}
+			} else if (this.audience.getMembers().has(client.clientId)) {
+				for (const id of client.selected) {
+					const localShape = this.canvas.getChildByLabel(id) as FeltShape | undefined;
+					if (localShape !== undefined && localShape !== null) {
+						localShape.showPresence();
+					}
+				}
+			} else {
+				// remove client from selection tree
+			}
+		}
 	};
 
 	public updateAllShapes = () => {
@@ -324,19 +371,24 @@ export class FeltApplication {
 		const seenIds = new Set<string>();
 		for (const shape of this.shapeTree.root) {
 			seenIds.add(shape.id);
-			let localShape = this.localShapes.get(shape.id);
-			if (localShape === undefined) {
+			let localShape = this.canvas.getChildByLabel(shape.id);
+			if (localShape === undefined || localShape === null) {
 				localShape = this.addNewLocalShape(shape);
 			} else if (localShape.zIndex !== Tree.key(shape)) {
-				localShape.update();
+				if (localShape instanceof FeltShape) {
+					localShape.update();
+				}
 			}
 		}
 
-		// delete local shapes that no longer exist
-		this.localShapes.forEach((shape: FeltShape) => {
-			if (!seenIds.has(shape.id)) {
-				this.deleteLocalShape(this.localShapes.get(shape.id)!);
-			}
-		});
+		// create an array of the shapes that need to be deleted
+		const shapesToDelete = this.canvas.children.filter((child) => !seenIds.has(child.label));
+
+		// iterate over the array and delete the shapes
+		for (const child of shapesToDelete) {
+			this.deleteLocalShape(child as FeltShape);
+		}
+
+		this.updateLocalSelectionAndPresence();
 	};
 }

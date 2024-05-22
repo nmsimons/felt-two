@@ -7,7 +7,6 @@
 import React, { useEffect, useState } from "react";
 import { IAzureAudience } from "@fluidframework/azure-client";
 import { Color, ShapeType as S, UXColor } from "../utils/utils.js";
-import { ShapesMap } from "../utils/shapes.js";
 import { ConnectionState, IFluidContainer, Tree, TreeView } from "fluid-framework";
 import { Shapes as FluidShapes } from "../schema/app_schema.js";
 import { FeltApplication as FeltApplication } from "../utils/application.js";
@@ -27,6 +26,7 @@ import {
 } from "@fluentui/react-icons";
 import "../output.css";
 import { undoRedo } from "../utils/undo.js";
+import { Session } from "../schema/session_schema.js";
 
 // eslint-disable-next-line react/prop-types
 export function ReactApp(props: {
@@ -45,7 +45,6 @@ export function ReactApp(props: {
 		toggleSignals: props.feltApplication.toggleSignals,
 		signals: props.feltApplication.getUseSignals,
 		selectionManager: props.feltApplication.selection,
-		localShapes: props.feltApplication.localShapes,
 		shapeTree: props.feltApplication.shapeTree,
 		fluidContainer: props.feltApplication.container,
 		canvas: props.feltApplication.canvas,
@@ -85,27 +84,29 @@ export function Toolbar(props: {
 	deleteAllShapes: any;
 	bringToFront: any;
 	audience: IAzureAudience;
-	selectionManager: ShapesMap;
-	localShapes: ShapesMap;
+	selectionManager: TreeView<typeof Session>;
 	undoRedo: undoRedo;
+	canvas: Container;
+	feltApplication: FeltApplication;
 }) {
 	const shapeButtonColor = "black";
+	const [maxReached, setMaxReached] = React.useState(false);
+	const [selected, setSelected] = React.useState(1);
 
 	React.useEffect(() => {
-		props.selectionManager.onChanged(() => {
-			getSelected(props.selectionManager.size);
+		const unsubscribe = Tree.on(props.selectionManager.root, "treeChanged", () => {
+			setSelected(1);
 		});
+		return () => {
+			unsubscribe();
+		};
 	}, []);
 
 	React.useEffect(() => {
-		props.localShapes.onChanged(() => {
-			getMaxReached(props.localShapes.maxReached);
+		props.canvas.on("childAdded", () => {
+			setMaxReached(props.feltApplication.maxReached);
 		});
 	}, []);
-
-	const [selected, getSelected] = React.useState(props.selectionManager.size);
-
-	const [maxReached, getMaxReached] = React.useState(props.localShapes.maxReached);
 
 	return (
 		<ButtonBar>
@@ -389,7 +390,8 @@ export function IconButton(props: {
 
 	return (
 		<button
-			className={`transition hover:scale-150 ${props.color} ${props.background} font-bold p-1 rounded inline-flex items-center h-6 w-6 grow`}
+			{...(props.disabled ? { disabled: true } : {})}
+			className={`transition disabled:hover:scale-100 hover:scale-150 ${props.color} ${props.background} font-bold p-1 rounded inline-flex items-center h-6 w-6 grow`}
 			onClick={(e) => handleClick(e)}
 		>
 			{props.icon}

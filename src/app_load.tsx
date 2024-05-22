@@ -40,6 +40,7 @@ export async function loadApp(
 		container,
 		services.audience,
 		signaler,
+		sessionTree,
 	);
 
 	// Render the app - note we attach new containers after render so

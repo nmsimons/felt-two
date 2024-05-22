@@ -1,19 +1,10 @@
 import { Shape, Shapes as FluidShapes } from "../schema/app_schema.js";
 import { Graphics, TextStyle, Text, Container, FederatedPointerEvent } from "pixi.js";
 import { Color, ShapeType } from "./utils.js";
-import { AzureMember, IAzureAudience } from "@fluidframework/azure-client";
-import {
-	removeUserFromPresenceArray,
-	addUserToPresenceArray,
-	shouldShowPresence,
-	userIsInPresenceArray,
-} from "./presence.js";
+import { IAzureAudience } from "@fluidframework/azure-client";
 import { Pixi2Signal, Signals } from "./wrappers.js";
 import { Signaler } from "@fluid-experimental/data-objects";
 import { Tree } from "fluid-framework";
-
-// set some constants for shapes
-export const shapeLimit = 10000;
 
 export function createShapeNode(
 	shapeType: ShapeType,
@@ -29,49 +20,6 @@ export function createShapeNode(
 		color,
 		shapeType: shapeType,
 	});
-}
-
-// defines a custom map for storing local shapes that fires an event when the map changes
-export class ShapesMap extends Map<string, FeltShape> {
-	private _cbs: Array<() => void> = [];
-
-	public onChanged(cb: () => void) {
-		this._cbs.push(cb);
-	}
-
-	private _max: number;
-
-	constructor(recommendedMax: number) {
-		super();
-		this._max = recommendedMax;
-	}
-
-	public get maxReached(): boolean {
-		return this.size >= this._max;
-	}
-
-	public set(key: string, value: FeltShape): this {
-		super.set(key, value);
-		for (const cb of this._cbs) {
-			cb();
-		}
-		return this;
-	}
-
-	public delete(key: string): boolean {
-		const b = super.delete(key);
-		for (const cb of this._cbs) {
-			cb();
-		}
-		return b;
-	}
-
-	public clear(): void {
-		super.clear();
-		for (const cb of this._cbs) {
-			cb();
-		}
-	}
 }
 
 // wrapper class for a PIXI shape with a few extra methods and properties
@@ -90,8 +38,8 @@ export class FeltShape extends Container {
 	constructor(
 		private canvas: Container,
 		public shape: Shape, // the Fluid shape object
-		private clearPresence: (userId: string) => void,
-		private addToSelected: (shape: FeltShape) => void,
+		private select: (shape: FeltShape) => void,
+		private multiSelect: (shape: FeltShape) => void,
 		readonly audience: IAzureAudience,
 		public useSignals: () => boolean,
 		readonly signaler: Signaler,
@@ -174,7 +122,11 @@ export class FeltShape extends Container {
 		};
 
 		const onSelect = (event: FederatedPointerEvent) => {
-			this.select();
+			if (event.ctrlKey) {
+				this.multiSelect(this);
+			} else {
+				this.select(this);
+			}
 		};
 
 		// intialize event handlers
@@ -267,49 +219,9 @@ export class FeltShape extends Container {
 		this.zIndex = this.z;
 		this._text.text = this.z.toString();
 		this._shape.tint = Number(this.color);
-
-		const me: AzureMember | undefined = this.audience.getMyself();
-		if (me !== undefined) {
-			if (shouldShowPresence(this.shape, me.id)) {
-				this.showPresence();
-			} else {
-				this.removePresence();
-			}
-		}
 	}
 
-	public unselect() {
-		this.removeSelection(); // removes the UI
-
-		const me: AzureMember | undefined = this.audience.getMyself();
-		if (me !== undefined) {
-			removeUserFromPresenceArray({ userId: me.id, shape: this.shape });
-		} else {
-			console.log("Failed to delete presence!!!");
-		}
-	}
-
-	public select() {
-		this.addToSelected(this); // this updates the local selection - even if presence isn't set, this is useful
-		this.showSelection(); // this just shows the UI
-
-		const me: AzureMember | undefined = this.audience.getMyself();
-		if (me === undefined) {
-			return;
-		} // it must be very early or something is broken
-		if (userIsInPresenceArray(this.shape, me.id)) {
-			return;
-		} // this is already in the presence array so no need to add it again
-
-		this.clearPresence(me.id);
-		if (me !== undefined) {
-			addUserToPresenceArray({ userId: me.id, shape: this.shape });
-		} else {
-			console.log("Failed to set presence!!!");
-		}
-	}
-
-	private showSelection() {
+	public showSelection() {
 		if (!this._selectionFrame) {
 			this._selectionFrame = new Graphics();
 			this.addChild(this._selectionFrame);
@@ -330,11 +242,11 @@ export class FeltShape extends Container {
 		this.drawFrame(this._selectionFrame, handleSize, biteSize, color, left, top, right, bottom);
 	}
 
-	private removeSelection() {
+	public removeSelection() {
 		this._selectionFrame?.clear();
 	}
 
-	private showPresence() {
+	public showPresence() {
 		if (!this._presenceFrame) {
 			this._presenceFrame = new Graphics();
 			this.addChild(this._presenceFrame);
@@ -353,23 +265,10 @@ export class FeltShape extends Container {
 		this._presenceFrame.zIndex = 4;
 
 		this.drawFrame(this._presenceFrame, handleSize, biteSize, color, left, top, right, bottom);
-
-		const style = new TextStyle({
-			align: "center",
-			fill: "white",
-			fontFamily: "Comic Sans MS",
-			fontSize: 30,
-			textBaseline: "bottom",
-		});
-		const text = new Text("0", style); // fix this to show the number of users
-		text.x = top + 15;
-		text.y = left + 15;
-		this._presenceFrame.removeChildren();
-		this._presenceFrame.addChild(text);
 	}
 
-	private removePresence() {
-		this._presenceFrame?.clear().removeChildren();
+	public removePresence() {
+		this._presenceFrame?.clear();
 	}
 
 	private drawLabel(value: string): Text {

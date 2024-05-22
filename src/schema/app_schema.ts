@@ -13,7 +13,11 @@ export class Shape extends sf.object("Shape", {
 	y: sf.number,
 	color: sf.string,
 	shapeType: sf.string,
-}) {}
+}) {
+	bringToFront() {
+		console.log("bringToFront");
+	}
+}
 
 export class Shapes extends sf.array("Shapes", Shape) {}
 
