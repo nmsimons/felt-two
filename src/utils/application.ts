@@ -356,7 +356,7 @@ export class FeltApplication {
 		);
 
 		if (client !== undefined) {
-			const i = Tree.key(shape.shape) as number;
+			const i = client.selected.findIndex((id) => id === shape.id);
 			client.selected.removeAt(i);
 		}
 	};
