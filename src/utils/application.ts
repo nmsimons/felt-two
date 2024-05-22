@@ -397,6 +397,9 @@ export class FeltApplication {
 
 	public updateAllShapes = () => {
 		const seenIds = new Set<string>();
+		if (this.shapeTree.error !== undefined) {
+			return;
+		}
 		for (const shape of this.shapeTree.root) {
 			seenIds.add(shape.id);
 			let localShape = this.canvas.getChildByLabel(shape.id);
