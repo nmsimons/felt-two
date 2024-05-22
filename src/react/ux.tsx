@@ -25,13 +25,13 @@ import {
 	ArrowRedoFilled,
 } from "@fluentui/react-icons";
 import "../output.css";
-import { undoRedo } from "../utils/undo.js";
+import { UndoRedo } from "../utils/undo.js";
 import { Session } from "../schema/session_schema.js";
 
 // eslint-disable-next-line react/prop-types
 export function ReactApp(props: {
 	feltApplication: FeltApplication;
-	undoRedo: undoRedo;
+	undoRedo: UndoRedo;
 }): JSX.Element {
 	const appProps = {
 		feltApplication: props.feltApplication,
@@ -85,13 +85,25 @@ export function Toolbar(props: {
 	bringToFront: any;
 	audience: IAzureAudience;
 	selectionManager: TreeView<typeof Session>;
-	undoRedo: undoRedo;
+	undoRedo: UndoRedo;
 	canvas: Container;
 	feltApplication: FeltApplication;
 }) {
 	const shapeButtonColor = "black";
 	const [maxReached, setMaxReached] = React.useState(false);
 	const [selected, setSelected] = React.useState(false);
+	const [canUndo, setCanUndo] = React.useState(props.undoRedo.canUndo());
+	const [canRedo, setCanRedo] = React.useState(props.undoRedo.canRedo());
+
+	React.useEffect(() => {
+		const unsubscribe = props.undoRedo.events.on("commitApplied", () => {
+			setCanUndo(props.undoRedo.canUndo());
+			setCanRedo(props.undoRedo.canRedo());
+		});
+		return () => {
+			unsubscribe();
+		};
+	}, []);
 
 	React.useEffect(() => {
 		const unsubscribe = Tree.on(props.selectionManager.root, "treeChanged", () => {
@@ -114,6 +126,9 @@ export function Toolbar(props: {
 
 	React.useEffect(() => {
 		props.canvas.on("childAdded", () => {
+			setMaxReached(props.feltApplication.maxReached);
+		});
+		props.canvas.on("childRemoved", () => {
 			setMaxReached(props.feltApplication.maxReached);
 		});
 	}, []);
@@ -217,13 +232,13 @@ export function Toolbar(props: {
 				<IconButton
 					icon={<ArrowUndoFilled />}
 					color={shapeButtonColor}
-					disabled={false}
+					disabled={!canUndo}
 					handleClick={() => props.undoRedo.undo()}
 				/>
 				<IconButton
 					icon={<ArrowRedoFilled />}
 					color={shapeButtonColor}
-					disabled={false}
+					disabled={!canRedo}
 					handleClick={() => props.undoRedo.redo()}
 				/>
 			</ButtonGroup>
@@ -426,7 +441,7 @@ export function IconButton(props: {
 	return (
 		<button
 			{...(props.disabled ? { disabled: true } : {})}
-			className={`transition disabled:hover:scale-100 hover:scale-150 ${props.color} ${props.background} font-bold p-1 rounded inline-flex items-center h-6 w-6 grow`}
+			className={`transition disabled:opacity-60 disabled:hover:scale-100 hover:scale-150 ${props.color} ${props.background} font-bold p-1 rounded inline-flex items-center h-6 w-6 grow`}
 			onClick={(e) => handleClick(e)}
 		>
 			{props.icon}
