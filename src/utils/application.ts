@@ -155,6 +155,21 @@ export class FeltApplication {
 		return this.container.connectionState;
 	}
 
+	private _showIndex = false;
+
+	public set showIndex(value: boolean) {
+		this._showIndex = value;
+		this.canvas.children.forEach((child) => {
+			if (child instanceof FeltShape) {
+				child.showIndex = this._showIndex;
+			}
+		});
+	}
+
+	public get showIndex(): boolean {
+		return this._showIndex;
+	}
+
 	// function to toggle the signals flag
 	public toggleSignals = (): void => {
 		this.useSignals = !this.useSignals;
@@ -179,6 +194,7 @@ export class FeltApplication {
 			},
 			this.audience,
 			this.getUseSignals,
+			this.showIndex,
 			this.signaler,
 		);
 

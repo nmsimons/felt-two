@@ -269,6 +269,31 @@ export function SignalsToggle(props: { toggleSignals: any; signals: () => boolea
 	);
 }
 
+export function IndexToggle(props: { feltApplication: FeltApplication }) {
+	const [, setChecked] = React.useState(props.feltApplication.showIndex);
+
+	const handleChange = () => {
+		props.feltApplication.showIndex = !props.feltApplication.showIndex;
+		setChecked(props.feltApplication.showIndex);
+	};
+
+	return (
+		<div className="">
+			<label className="pr-2" htmlFor="switchRoundedInfo">
+				Show index:
+			</label>
+			<input
+				id="switchRoundedInfo"
+				type="checkbox"
+				name="switchRoundedInfo"
+				className="p-2"
+				checked={props.feltApplication.showIndex}
+				onChange={handleChange}
+			/>
+		</div>
+	);
+}
+
 export function ShapeCount(props: { canvas: Container; shapeTree: TreeView<typeof FluidShapes> }) {
 	const [fluidCount, setFluidCount] = useState(props.shapeTree.root.length);
 
@@ -357,6 +382,7 @@ export function Header(props: {
 		<div className="h-[48px] flex shrink-0 flex-row items-center justify-between bg-black text-base text-white z-40 w-full">
 			<div className="flex m-2">Felt</div>
 			<div className="flex m-2 gap-4 ">
+				<IndexToggle feltApplication={props.feltApplication} />
 				<SignalsToggle {...props} />
 				<ShapeCount {...props} />
 				<ConnectionStatus {...props} />

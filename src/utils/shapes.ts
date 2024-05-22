@@ -42,6 +42,7 @@ export class FeltShape extends Container {
 		private multiSelect: (shape: FeltShape) => void,
 		readonly audience: IAzureAudience,
 		public useSignals: () => boolean,
+		readonly setShowIndex: boolean,
 		readonly signaler: Signaler,
 	) {
 		super();
@@ -49,7 +50,6 @@ export class FeltShape extends Container {
 		this.label = this.shape.id;
 		this._shape = new Graphics();
 		this._text = this.drawLabel(this.z.toString());
-
 		this.initProperties();
 		this.initPixiShape();
 		this.initUserEvents();
@@ -62,6 +62,7 @@ export class FeltShape extends Container {
 		this._shape.fill(0xffffff);
 		this.interactive = true;
 		this.addChild(this._shape);
+		this._text.visible = this.setShowIndex;
 		this.addChild(this._text);
 		this.canvas.addChild(this);
 	};
@@ -132,6 +133,14 @@ export class FeltShape extends Container {
 		// intialize event handlers
 		this.on("pointerdown", onDragStart).on("pointerdown", onSelect);
 	};
+
+	public set showIndex(value: boolean) {
+		this._text.visible = value;
+	}
+
+	public get showIndex() {
+		return this._text.visible;
+	}
 
 	public update() {
 		this.dirty = false;
@@ -220,6 +229,20 @@ export class FeltShape extends Container {
 		this._shape.tint = Number(this.color);
 	}
 
+	private drawLabel(value: string): Text {
+		const style = new TextStyle({
+			align: "center",
+			fill: "white",
+			fontFamily: "Comic Sans MS",
+			fontSize: 16,
+			textBaseline: "bottom",
+		});
+		const text = new Text({ text: value, style });
+		text.x = -text.width / 2;
+		text.y = -text.height / 2;
+		return text;
+	}
+
 	public showSelection() {
 		if (!this._selectionFrame) {
 			this._selectionFrame = new Graphics();
@@ -268,20 +291,6 @@ export class FeltShape extends Container {
 
 	public removePresence() {
 		this._presenceFrame?.clear();
-	}
-
-	private drawLabel(value: string): Text {
-		const style = new TextStyle({
-			align: "center",
-			fill: "white",
-			fontFamily: "Comic Sans MS",
-			fontSize: 16,
-			textBaseline: "bottom",
-		});
-		const text = new Text({ text: value, style });
-		text.x = -text.width / 2;
-		text.y = -text.height / 2;
-		return text;
 	}
 
 	private drawFrame(
