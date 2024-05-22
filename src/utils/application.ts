@@ -34,10 +34,22 @@ export class FeltApplication {
 		// Show the selection and presence of the shapes
 		this.updateLocalSelectionAndPresence();
 
+		let _canvasIsDirty = false;
+
 		// event handler for detecting remote changes to Fluid data and updating
 		// the local data
 		Tree.on(shapeTree.root, "nodeChanged", () => {
-			this.updateAllShapes();
+			_canvasIsDirty = true;
+		});
+
+		// event handler that runs after a batch of changes is complete
+		// only used to iterate over the shapes if the canvas is dirty
+		// and isn't used to update individual shapes
+		this.shapeTree.events.on("afterBatch", () => {
+			if (_canvasIsDirty) {
+				_canvasIsDirty = false;
+				this.updateAllShapes();
+			}
 		});
 
 		// event handler for detecting changes to the selection data and updating
