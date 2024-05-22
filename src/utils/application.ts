@@ -263,15 +263,16 @@ export class FeltApplication {
 				(client) => client.clientId === this.audience.getMyself()?.id,
 			);
 
-			if (client === undefined || client === null) return;
+			if (client === undefined || client === null || client.selected.length === 0) return;
 
-			if (client.selected.length > 0) {
-				for (const id of client.selected) {
-					// Find the local shape object by id in the canvas
-					const shape = this.canvas.getChildByLabel(id) as FeltShape | undefined;
-					if (shape instanceof FeltShape) {
-						f(shape);
-					}
+			// create a copy of the client.selected array
+			const selected = [...client.selected];
+
+			for (const id of selected) {
+				// Find the local shape object by id in the canvas
+				const shape = this.canvas.getChildByLabel(id) as FeltShape | undefined;
+				if (shape instanceof FeltShape) {
+					f(shape);
 				}
 			}
 		});
