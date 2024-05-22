@@ -91,11 +91,21 @@ export function Toolbar(props: {
 }) {
 	const shapeButtonColor = "black";
 	const [maxReached, setMaxReached] = React.useState(false);
-	const [selected, setSelected] = React.useState(1);
+	const [selected, setSelected] = React.useState(false);
 
 	React.useEffect(() => {
 		const unsubscribe = Tree.on(props.selectionManager.root, "treeChanged", () => {
-			setSelected(1);
+			const client = props.audience.getMyself();
+			if (client !== undefined) {
+				const selected = props.selectionManager.root.clients.find(
+					(c) => c.clientId === client.id,
+				);
+				if (selected !== undefined && selected.selected.length > 0) {
+					setSelected(true);
+				} else {
+					setSelected(false);
+				}
+			}
 		});
 		return () => {
 			unsubscribe();
@@ -261,11 +271,10 @@ export function SignalsToggle(props: { toggleSignals: any; signals: () => boolea
 
 export function ShapeCount(props: { canvas: Container; shapeTree: TreeView<typeof FluidShapes> }) {
 	const [fluidCount, setFluidCount] = useState(props.shapeTree.root.length);
-	const [localCount, setLocalCount] = useState(props.canvas.children.length);
 
 	useEffect(() => {
 		Tree.on(props.shapeTree.root, "nodeChanged", () => {
-			setFluidCount(props.shapeTree.root.length), setLocalCount(props.canvas.children.length);
+			setFluidCount(props.shapeTree.root.length);
 		});
 	}, []);
 

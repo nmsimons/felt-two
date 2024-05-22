@@ -8,7 +8,7 @@ import { Shape, Shapes } from "../schema/app_schema.js";
 import { FeltShape, createShapeNode } from "./shapes.js";
 import { Color, getNextColor, getNextShape, getRandomInt, ShapeType } from "./utils.js";
 import { Container, FederatedPointerEvent, Application as PIXIApplication } from "pixi.js";
-import { ConnectionState, IFluidContainer, IMember, Tree, TreeView } from "fluid-framework";
+import { ConnectionState, IFluidContainer, Tree, TreeView } from "fluid-framework";
 import { Signal2Pixi, SignalPackage, Signals } from "./wrappers.js";
 import { Client, Session } from "../schema/session_schema.js";
 
@@ -30,6 +30,9 @@ export class FeltApplication {
 
 		// Get all existing shapes
 		this.updateAllShapes();
+
+		// Show the selection and presence of the shapes
+		this.updateLocalSelectionAndPresence();
 
 		// event handler for detecting remote changes to Fluid data and updating
 		// the local data
@@ -232,7 +235,7 @@ export class FeltApplication {
 
 	// Changes the color of a shape and syncs with the Fluid data
 	public changeColor = (shape: FeltShape, color: Color): void => {
-		shape.color = color;
+		if (shape instanceof FeltShape) shape.color = color;
 	};
 
 	// A function that iterates over all selected shapes and calls the passed function
@@ -243,17 +246,15 @@ export class FeltApplication {
 			const client = this.selection.root.clients.find(
 				(client) => client.clientId === this.audience.getMyself()?.id,
 			);
-			console.log("CLIENT: ", client?.clientId);
 
-			if (client !== undefined && client !== null && client.selected.length > 0) {
+			if (client === undefined || client === null) return;
+
+			if (client.selected.length > 0) {
 				for (const id of client.selected) {
 					// Find the local shape object by id in the canvas
 					const shape = this.canvas.getChildByLabel(id) as FeltShape | undefined;
-
 					if (shape !== undefined) {
 						f(shape);
-					} else {
-						console.log("Shape not found");
 					}
 				}
 			}
@@ -300,7 +301,6 @@ export class FeltApplication {
 	};
 
 	public setFluidSelection = (shape: FeltShape): void => {
-		console.log("SETTING FLUID SELECTION: ");
 		let client = this.selection.root.clients.find(
 			(client) => client.clientId === this.audience.getMyself()?.id,
 		);
@@ -318,11 +318,9 @@ export class FeltApplication {
 				client.selected.insertAtEnd(shape.id);
 			}
 		}
-		console.log(this.selection.root.clients.length);
 	};
 
 	public clearFluidSelection = (): void => {
-		console.log("CLEARING FLUID SELECTION: ");
 		const client = this.selection.root.clients.find(
 			(client) => client.clientId === this.audience.getMyself()?.id,
 		);
@@ -367,7 +365,6 @@ export class FeltApplication {
 	};
 
 	public updateAllShapes = () => {
-		console.log("UPDATING ALL SHAPES: ");
 		const seenIds = new Set<string>();
 		for (const shape of this.shapeTree.root) {
 			seenIds.add(shape.id);
@@ -388,7 +385,5 @@ export class FeltApplication {
 		for (const child of shapesToDelete) {
 			this.deleteLocalShape(child as FeltShape);
 		}
-
-		this.updateLocalSelectionAndPresence();
 	};
 }
