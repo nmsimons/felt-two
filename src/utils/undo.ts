@@ -70,22 +70,22 @@ export function createUndoRedoStacks(events: ISubscribable<TreeViewEvents>): Und
 		revertFromStack(redoStack);
 	}
 
-	function canUndo(): boolean {
-		return undoStack.length > 0;
+	function getUndoStackLength(): number {
+		return undoStack.length;
 	}
 
-	function canRedo(): boolean {
-		return redoStack.length > 0;
+	function getRedoStackLength(): number {
+		return redoStack.length;
 	}
 
-	return { undo, redo, dispose, canUndo, canRedo, events };
+	return { undo, redo, dispose, getUndoStackLength, getRedoStackLength, events };
 }
 
 export interface UndoRedo {
 	undo: () => void;
 	redo: () => void;
 	dispose: () => void;
-	canUndo: () => boolean;
-	canRedo: () => boolean;
+	getUndoStackLength: () => number;
+	getRedoStackLength: () => number;
 	events: ISubscribable<TreeViewEvents>;
 }

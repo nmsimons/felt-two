@@ -26,7 +26,6 @@ import {
 	SelectAllOnFilled,
 } from "@fluentui/react-icons";
 import "../output.css";
-import { UndoRedo } from "../utils/undo.js";
 
 // eslint-disable-next-line react/prop-types
 export function ReactApp(props: { feltApplication: FeltApplication }): JSX.Element {
@@ -61,13 +60,13 @@ export function Toolbar(props: { feltApplication: FeltApplication }) {
 	const [maxReached, setMaxReached] = React.useState(false);
 	const [selected, setSelected] = React.useState(false);
 	const [multiSelected, setMultiSelected] = React.useState(false);
-	const [canUndo, setCanUndo] = React.useState(undoRedo.canUndo());
-	const [canRedo, setCanRedo] = React.useState(undoRedo.canRedo());
+	const [canUndo, setCanUndo] = React.useState(undoRedo.getUndoStackLength() > 0);
+	const [canRedo, setCanRedo] = React.useState(undoRedo.getRedoStackLength() > 0);
 
 	React.useEffect(() => {
 		const unsubscribe = undoRedo.events.on("commitApplied", () => {
-			setCanUndo(undoRedo.canUndo());
-			setCanRedo(undoRedo.canRedo());
+			setCanUndo(undoRedo.getUndoStackLength() > 0);
+			setCanRedo(undoRedo.getRedoStackLength() > 0);
 		});
 		return () => {
 			unsubscribe();
