@@ -11,8 +11,11 @@ import { Container, FederatedPointerEvent, Application as PIXIApplication } from
 import { ConnectionState, IFluidContainer, Tree, TreeView } from "fluid-framework";
 import { Signal2Pixi, SignalPackage, Signals } from "./wrappers.js";
 import { Client, Session } from "../schema/session_schema.js";
+import { createUndoRedoStacks, UndoRedo } from "./undo.js";
 
 export class FeltApplication {
+	readonly undoRedo: UndoRedo;
+
 	private constructor(
 		public pixiApp: PIXIApplication,
 		public selection: TreeView<typeof Session>,
@@ -79,6 +82,8 @@ export class FeltApplication {
 		};
 
 		signaler.onSignal(Signals.ON_DRAG, signalHandler);
+
+		this.undoRedo = createUndoRedoStacks(shapeTree.events);
 	}
 
 	public static async build(
@@ -182,15 +187,6 @@ export class FeltApplication {
 		return this._showIndex;
 	}
 
-	// function to toggle the signals flag
-	public toggleSignals = (): void => {
-		this.useSignals = !this.useSignals;
-	};
-
-	public getUseSignals = (): boolean => {
-		return this.useSignals;
-	};
-
 	// Creates a new FeltShape object which is the local object that represents
 	// all shapes on the canvas
 	public addNewLocalShape = (shape: Shape): FeltShape => {
@@ -205,7 +201,9 @@ export class FeltApplication {
 				this.setFluidSelection(shape);
 			},
 			this.audience,
-			this.getUseSignals,
+			() => {
+				return this.useSignals;
+			},
 			this.showIndex,
 			this.signaler,
 		);

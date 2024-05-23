@@ -5,7 +5,6 @@ import { createRoot } from "react-dom/client";
 import { ReactApp } from "./react/ux.js";
 import { appTreeConfiguration } from "./schema/app_schema.js";
 import { sessionTreeConfiguration } from "./schema/session_schema.js";
-import { createUndoRedoStacks } from "./utils/undo.js";
 import { containerSchema } from "./schema/container_schema.js";
 import { loadFluidData } from "./infra/fluid.js";
 import { IFluidContainer } from "fluid-framework";
@@ -32,9 +31,6 @@ export async function loadApp(
 	document.body.appendChild(app);
 	const root = createRoot(app);
 
-	// Create undo/redo stacks for the app
-	const undoRedo = createUndoRedoStacks(appTree.events);
-
 	const feltApplication = await FeltApplication.build(
 		appTree,
 		container,
@@ -46,7 +42,7 @@ export async function loadApp(
 	// Render the app - note we attach new containers after render so
 	// the app renders instantly on create new flow. The app will be
 	// interactive immediately.
-	root.render(<ReactApp feltApplication={feltApplication} undoRedo={undoRedo} />);
+	root.render(<ReactApp feltApplication={feltApplication} />);
 
 	// disable right-click context menu since right-click is reserved
 	document.addEventListener("contextmenu", (event) => event.preventDefault());

@@ -29,10 +29,7 @@ import "../output.css";
 import { UndoRedo } from "../utils/undo.js";
 
 // eslint-disable-next-line react/prop-types
-export function ReactApp(props: {
-	feltApplication: FeltApplication;
-	undoRedo: UndoRedo;
-}): JSX.Element {
+export function ReactApp(props: { feltApplication: FeltApplication }): JSX.Element {
 	const deleteShape = props.feltApplication.deleteSelectedShapes;
 
 	const keyDownHandler = (e: KeyboardEvent) => {
@@ -57,18 +54,20 @@ export function ReactApp(props: {
 }
 
 // eslint-disable-next-line react/prop-types
-export function Toolbar(props: { feltApplication: FeltApplication; undoRedo: UndoRedo }) {
+export function Toolbar(props: { feltApplication: FeltApplication }) {
+	const undoRedo = props.feltApplication.undoRedo;
+
 	const shapeButtonColor = "black";
 	const [maxReached, setMaxReached] = React.useState(false);
 	const [selected, setSelected] = React.useState(false);
 	const [multiSelected, setMultiSelected] = React.useState(false);
-	const [canUndo, setCanUndo] = React.useState(props.undoRedo.canUndo());
-	const [canRedo, setCanRedo] = React.useState(props.undoRedo.canRedo());
+	const [canUndo, setCanUndo] = React.useState(undoRedo.canUndo());
+	const [canRedo, setCanRedo] = React.useState(undoRedo.canRedo());
 
 	React.useEffect(() => {
-		const unsubscribe = props.undoRedo.events.on("commitApplied", () => {
-			setCanUndo(props.undoRedo.canUndo());
-			setCanRedo(props.undoRedo.canRedo());
+		const unsubscribe = undoRedo.events.on("commitApplied", () => {
+			setCanUndo(undoRedo.canUndo());
+			setCanRedo(undoRedo.canRedo());
 		});
 		return () => {
 			unsubscribe();
@@ -234,13 +233,13 @@ export function Toolbar(props: { feltApplication: FeltApplication; undoRedo: Und
 					icon={<ArrowUndoFilled />}
 					color={shapeButtonColor}
 					disabled={!canUndo}
-					handleClick={() => props.undoRedo.undo()}
+					handleClick={() => props.feltApplication.undoRedo.undo()}
 				/>
 				<IconButton
 					icon={<ArrowRedoFilled />}
 					color={shapeButtonColor}
 					disabled={!canRedo}
-					handleClick={() => props.undoRedo.redo()}
+					handleClick={() => props.feltApplication.undoRedo.redo()}
 				/>
 			</ButtonGroup>
 		</ButtonBar>
@@ -264,7 +263,7 @@ export function SignalsToggle(props: { feltApplication: FeltApplication }) {
 	const [checked, setChecked] = React.useState(props.feltApplication.useSignals);
 
 	const handleChange = () => {
-		props.feltApplication.toggleSignals();
+		props.feltApplication.useSignals = !props.feltApplication.useSignals;
 		setChecked(props.feltApplication.useSignals);
 	};
 
