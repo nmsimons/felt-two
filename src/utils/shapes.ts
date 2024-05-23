@@ -159,7 +159,6 @@ export class FeltShape extends Container {
 		const parent = Tree.parent(this.shape);
 		if (Tree.is(parent, FluidShapes)) {
 			Tree.runTransaction(this.shape, () => {
-				this.dirty = true;
 				parent.moveToEnd(Tree.key(this.shape) as number);
 			});
 		}
@@ -168,7 +167,6 @@ export class FeltShape extends Container {
 	public sendToBack() {
 		const parent = Tree.parent(this.shape);
 		if (Tree.is(parent, FluidShapes)) {
-			this.dirty = true;
 			parent.moveToStart(Tree.key(this.shape) as number);
 		}
 	}
@@ -176,12 +174,10 @@ export class FeltShape extends Container {
 	public bringForward() {
 		const parent = Tree.parent(this.shape);
 		if (Tree.is(parent, FluidShapes)) {
-			if (parent.length > (Tree.key(this.shape) as number)) {
-				this.dirty = true;
-				parent.moveToIndex(
-					Tree.key(this.shape) as number,
-					(Tree.key(this.shape) as number) + 1,
-				);
+			const i = Tree.key(this.shape) as number;
+			console.log(i, parent.length);
+			if (parent.length - 1 > i) {
+				parent.moveToIndex(i + 2, i);
 			}
 		}
 	}
@@ -189,12 +185,9 @@ export class FeltShape extends Container {
 	public sendBackward() {
 		const parent = Tree.parent(this.shape);
 		if (Tree.is(parent, FluidShapes)) {
-			if (0 < (Tree.key(this.shape) as number)) {
-				this.dirty = true;
-				parent.moveToIndex(
-					Tree.key(this.shape) as number,
-					(Tree.key(this.shape) as number) - 1,
-				);
+			const i = Tree.key(this.shape) as number;
+			if (0 < i) {
+				parent.moveToIndex(i - 1, i);
 			}
 		}
 	}

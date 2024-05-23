@@ -5,12 +5,9 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useEffect, useState } from "react";
-import { IAzureAudience } from "@fluidframework/azure-client";
 import { Color, ShapeType as S, UXColor } from "../utils/utils.js";
-import { ConnectionState, IFluidContainer, Tree, TreeView } from "fluid-framework";
-import { Shapes as FluidShapes } from "../schema/app_schema.js";
+import { ConnectionState, Tree } from "fluid-framework";
 import { FeltApplication as FeltApplication } from "../utils/application.js";
-import { Application, Container } from "pixi.js";
 import {
 	SquareFilled,
 	CircleFilled,
@@ -23,35 +20,19 @@ import {
 	PositionToFrontFilled,
 	ArrowUndoFilled,
 	ArrowRedoFilled,
+	PositionBackwardFilled,
+	PositionToBackFilled,
+	PositionForwardFilled,
+	SelectAllOnFilled,
 } from "@fluentui/react-icons";
 import "../output.css";
 import { UndoRedo } from "../utils/undo.js";
-import { Session } from "../schema/session_schema.js";
 
 // eslint-disable-next-line react/prop-types
 export function ReactApp(props: {
 	feltApplication: FeltApplication;
 	undoRedo: UndoRedo;
 }): JSX.Element {
-	const appProps = {
-		feltApplication: props.feltApplication,
-		audience: props.feltApplication.audience,
-		createShape: props.feltApplication.createShape,
-		createLotsOfShapes: props.feltApplication.createLotsOfShapes,
-		changeColor: props.feltApplication.changeColorofSelected,
-		deleteShape: props.feltApplication.deleteSelectedShapes,
-		deleteAllShapes: props.feltApplication.deleteAllShapes,
-		bringToFront: props.feltApplication.bringSelectedToFront,
-		toggleSignals: props.feltApplication.toggleSignals,
-		signals: props.feltApplication.getUseSignals,
-		selectionManager: props.feltApplication.selection,
-		shapeTree: props.feltApplication.shapeTree,
-		fluidContainer: props.feltApplication.container,
-		canvas: props.feltApplication.canvas,
-		pixiApp: props.feltApplication.pixiApp,
-		undoRedo: props.undoRedo,
-	};
-
 	const deleteShape = props.feltApplication.deleteSelectedShapes;
 
 	const keyDownHandler = (e: KeyboardEvent) => {
@@ -68,30 +49,19 @@ export function ReactApp(props: {
 
 	return (
 		<div className="w-full h-full">
-			<Header {...appProps} />
-			<Toolbar {...appProps} />
-			<Canvas {...appProps} />
+			<Header {...props} />
+			<Toolbar {...props} />
+			<Canvas {...props} />
 		</div>
 	);
 }
 
 // eslint-disable-next-line react/prop-types
-export function Toolbar(props: {
-	createShape: any;
-	createLotsOfShapes: any;
-	changeColor: any;
-	deleteShape: any;
-	deleteAllShapes: any;
-	bringToFront: any;
-	audience: IAzureAudience;
-	selectionManager: TreeView<typeof Session>;
-	undoRedo: UndoRedo;
-	canvas: Container;
-	feltApplication: FeltApplication;
-}) {
+export function Toolbar(props: { feltApplication: FeltApplication; undoRedo: UndoRedo }) {
 	const shapeButtonColor = "black";
 	const [maxReached, setMaxReached] = React.useState(false);
 	const [selected, setSelected] = React.useState(false);
+	const [multiSelected, setMultiSelected] = React.useState(false);
 	const [canUndo, setCanUndo] = React.useState(props.undoRedo.canUndo());
 	const [canRedo, setCanRedo] = React.useState(props.undoRedo.canRedo());
 
@@ -106,16 +76,21 @@ export function Toolbar(props: {
 	}, []);
 
 	React.useEffect(() => {
-		const unsubscribe = Tree.on(props.selectionManager.root, "treeChanged", () => {
-			const client = props.audience.getMyself();
+		const unsubscribe = Tree.on(props.feltApplication.selection.root, "treeChanged", () => {
+			const client = props.feltApplication.audience.getMyself();
 			if (client !== undefined) {
-				const selected = props.selectionManager.root.clients.find(
+				const selected = props.feltApplication.selection.root.clients.find(
 					(c) => c.clientId === client.id,
 				);
-				if (selected !== undefined && selected.selected.length > 0) {
+				if (selected !== undefined && selected.selected.length === 1) {
 					setSelected(true);
+					setMultiSelected(false);
+				} else if (selected !== undefined && selected.selected.length > 1) {
+					setSelected(true);
+					setMultiSelected(true);
 				} else {
 					setSelected(false);
+					setMultiSelected(false);
 				}
 			}
 		});
@@ -125,10 +100,10 @@ export function Toolbar(props: {
 	}, []);
 
 	React.useEffect(() => {
-		props.canvas.on("childAdded", () => {
+		props.feltApplication.canvas.on("childAdded", () => {
 			setMaxReached(props.feltApplication.maxReached);
 		});
-		props.canvas.on("childRemoved", () => {
+		props.feltApplication.canvas.on("childRemoved", () => {
 			setMaxReached(props.feltApplication.maxReached);
 		});
 	}, []);
@@ -140,35 +115,43 @@ export function Toolbar(props: {
 					icon={<CircleFilled />}
 					color={UXColor.Red}
 					disabled={maxReached}
-					handleClick={() => props.createShape(S.Circle, Color.Red)}
+					handleClick={() => props.feltApplication.createShape(S.Circle, Color.Red)}
 					background="bg-white"
 				/>
 				<IconButton
 					icon={<SquareFilled />}
 					color={UXColor.Blue}
 					disabled={maxReached}
-					handleClick={() => props.createShape(S.Square, Color.Blue)}
+					handleClick={() => props.feltApplication.createShape(S.Square, Color.Blue)}
 					background="bg-white"
 				/>
 				<IconButton
 					icon={<TriangleFilled />}
 					color={UXColor.Orange}
 					disabled={maxReached}
-					handleClick={() => props.createShape(S.Triangle, Color.Orange)}
+					handleClick={() => props.feltApplication.createShape(S.Triangle, Color.Orange)}
 					background="bg-white"
 				/>
 				<IconButton
 					icon={<RectangleLandscapeFilled />}
 					color={UXColor.Purple}
 					disabled={maxReached}
-					handleClick={() => props.createShape(S.Rectangle, Color.Purple)}
+					handleClick={() => props.feltApplication.createShape(S.Rectangle, Color.Purple)}
 					background="bg-white"
 				/>
 				<IconButton
 					icon={<ShapesFilled />}
 					color={shapeButtonColor}
 					disabled={maxReached}
-					handleClick={() => props.createLotsOfShapes(100)}
+					handleClick={() => props.feltApplication.createLotsOfShapes(100)}
+				/>
+			</ButtonGroup>
+			<ButtonGroup>
+				<IconButton
+					icon={<SelectAllOnFilled />}
+					color={shapeButtonColor}
+					disabled={false}
+					handleClick={() => props.feltApplication.selectAllShapes()}
 				/>
 			</ButtonGroup>
 			<ButtonGroup>
@@ -176,56 +159,74 @@ export function Toolbar(props: {
 					icon={<PaintBrushFilled />}
 					color={UXColor.Red}
 					disabled={!selected}
-					handleClick={() => props.changeColor(Color.Red)}
+					handleClick={() => props.feltApplication.changeColorofSelected(Color.Red)}
 					background="bg-white"
 				/>
 				<IconButton
 					icon={<PaintBrushFilled />}
 					color={UXColor.Green}
 					disabled={!selected}
-					handleClick={() => props.changeColor(Color.Green)}
+					handleClick={() => props.feltApplication.changeColorofSelected(Color.Green)}
 					background="bg-white"
 				/>
 				<IconButton
 					icon={<PaintBrushFilled />}
 					color={UXColor.Blue}
 					disabled={!selected}
-					handleClick={() => props.changeColor(Color.Blue)}
+					handleClick={() => props.feltApplication.changeColorofSelected(Color.Blue)}
 					background="bg-white"
 				/>
 				<IconButton
 					icon={<PaintBrushFilled />}
 					color={UXColor.Orange}
 					disabled={!selected}
-					handleClick={() => props.changeColor(Color.Orange)}
+					handleClick={() => props.feltApplication.changeColorofSelected(Color.Orange)}
 					background="bg-white"
 				/>
 				<IconButton
 					icon={<PaintBrushFilled />}
 					color={UXColor.Purple}
 					disabled={!selected}
-					handleClick={() => props.changeColor(Color.Purple)}
+					handleClick={() => props.feltApplication.changeColorofSelected(Color.Purple)}
 					background="bg-white"
 				/>
 			</ButtonGroup>
 			<ButtonGroup>
 				<IconButton
+					icon={<PositionForwardFilled />}
+					color={shapeButtonColor}
+					disabled={!selected || multiSelected}
+					handleClick={() => props.feltApplication.bringSelectedForward()}
+				/>
+				<IconButton
 					icon={<PositionToFrontFilled />}
 					color={shapeButtonColor}
-					disabled={!selected}
-					handleClick={() => props.bringToFront()}
+					disabled={!selected || multiSelected}
+					handleClick={() => props.feltApplication.bringSelectedToFront()}
+				/>
+				<IconButton
+					icon={<PositionBackwardFilled />}
+					color={shapeButtonColor}
+					disabled={!selected || multiSelected}
+					handleClick={() => props.feltApplication.sendSelectedBackward()}
+				/>
+				<IconButton
+					icon={<PositionToBackFilled />}
+					color={shapeButtonColor}
+					disabled={!selected || multiSelected}
+					handleClick={() => props.feltApplication.sendSelectedToBack()}
 				/>
 				<IconButton
 					icon={<DeleteFilled />}
 					color={shapeButtonColor}
-					disabled={!selected}
-					handleClick={() => props.deleteShape()}
+					disabled={!selected || multiSelected}
+					handleClick={() => props.feltApplication.deleteSelectedShapes()}
 				/>
 				<IconButton
 					icon={<EraserFilled />}
 					color={shapeButtonColor}
 					disabled={false}
-					handleClick={() => props.deleteAllShapes()}
+					handleClick={() => props.feltApplication.deleteAllShapes()}
 				/>
 			</ButtonGroup>
 			<ButtonGroup>
@@ -246,11 +247,11 @@ export function Toolbar(props: {
 	);
 }
 
-export function Canvas(props: { pixiApp: Application }): JSX.Element {
+export function Canvas(props: { feltApplication: FeltApplication }): JSX.Element {
 	useEffect(() => {
 		const canvas = document.createElement("canvas");
 		canvas.id = "canvas";
-		document.getElementById("canvas")?.appendChild(props.pixiApp.canvas);
+		document.getElementById("canvas")?.appendChild(props.feltApplication.pixiApp.canvas);
 	}, []);
 	return (
 		<div className="flex justify-center w-full h-full">
@@ -259,12 +260,12 @@ export function Canvas(props: { pixiApp: Application }): JSX.Element {
 	);
 }
 
-export function SignalsToggle(props: { toggleSignals: any; signals: () => boolean }) {
-	const [, setChecked] = React.useState(props.signals());
+export function SignalsToggle(props: { feltApplication: FeltApplication }) {
+	const [checked, setChecked] = React.useState(props.feltApplication.useSignals);
 
 	const handleChange = () => {
-		props.toggleSignals();
-		setChecked(props.signals());
+		props.feltApplication.toggleSignals();
+		setChecked(props.feltApplication.useSignals);
 	};
 
 	return (
@@ -277,7 +278,7 @@ export function SignalsToggle(props: { toggleSignals: any; signals: () => boolea
 				type="checkbox"
 				name="switchRoundedInfo"
 				className="p-2"
-				checked={props.signals()}
+				checked={checked}
 				onChange={handleChange}
 			/>
 		</div>
@@ -309,36 +310,38 @@ export function IndexToggle(props: { feltApplication: FeltApplication }) {
 	);
 }
 
-export function ShapeCount(props: { canvas: Container; shapeTree: TreeView<typeof FluidShapes> }) {
-	const [fluidCount, setFluidCount] = useState(props.shapeTree.root.length);
+export function ShapeCount(props: { feltApplication: FeltApplication }) {
+	const [fluidCount, setFluidCount] = useState(props.feltApplication.shapeTree.root.length);
 
 	useEffect(() => {
-		Tree.on(props.shapeTree.root, "nodeChanged", () => {
-			setFluidCount(props.shapeTree.root.length);
+		Tree.on(props.feltApplication.shapeTree.root, "nodeChanged", () => {
+			setFluidCount(props.feltApplication.shapeTree.root.length);
 		});
 	}, []);
 
 	return <div>Shapes: {fluidCount}</div>;
 }
 
-export function ConnectionStatus(props: { fluidContainer: IFluidContainer }) {
-	const [connectionState, setConnectionState] = useState(props.fluidContainer.connectionState);
+export function ConnectionStatus(props: { feltApplication: FeltApplication }) {
+	const fluidContainer = props.feltApplication.container;
+
+	const [connectionState, setConnectionState] = useState(fluidContainer.connectionState);
 
 	useEffect(() => {
-		props.fluidContainer.on("connected", () => {
-			setConnectionState(props.fluidContainer.connectionState);
+		fluidContainer.on("connected", () => {
+			setConnectionState(fluidContainer.connectionState);
 		});
-		props.fluidContainer.on("disconnected", () => {
-			setConnectionState(props.fluidContainer.connectionState);
+		fluidContainer.on("disconnected", () => {
+			setConnectionState(fluidContainer.connectionState);
 		});
-		props.fluidContainer.on("disposed", () => {
-			setConnectionState(props.fluidContainer.connectionState);
+		fluidContainer.on("disposed", () => {
+			setConnectionState(fluidContainer.connectionState);
 		});
-		props.fluidContainer.on("dirty", () => {
-			setConnectionState(props.fluidContainer.connectionState);
+		fluidContainer.on("dirty", () => {
+			setConnectionState(fluidContainer.connectionState);
 		});
-		props.fluidContainer.on("saved", () => {
-			setConnectionState(props.fluidContainer.connectionState);
+		fluidContainer.on("saved", () => {
+			setConnectionState(fluidContainer.connectionState);
 		});
 	}, []);
 
@@ -365,8 +368,8 @@ export function ConnectionStatus(props: { fluidContainer: IFluidContainer }) {
 	return <div>Status: {convertConnectionStateToString(connectionState)}</div>;
 }
 
-export function Audience(props: { audience: IAzureAudience }): JSX.Element {
-	const { audience } = props;
+export function Audience(props: { feltApplication: FeltApplication }): JSX.Element {
+	const audience = props.feltApplication.audience;
 
 	// retrieve all the members currently in the session
 	const [members, setMembers] = React.useState(Array.from(audience.getMembers().values()));
@@ -384,15 +387,7 @@ export function Audience(props: { audience: IAzureAudience }): JSX.Element {
 	return <div>Users: {members.length}</div>;
 }
 
-export function Header(props: {
-	shapeTree: TreeView<typeof FluidShapes>;
-	fluidContainer: IFluidContainer;
-	audience: IAzureAudience;
-	feltApplication: FeltApplication;
-	canvas: Container;
-	toggleSignals: any;
-	signals: () => boolean;
-}): JSX.Element {
+export function Header(props: { feltApplication: FeltApplication }): JSX.Element {
 	return (
 		<div className="h-[48px] flex shrink-0 flex-row items-center justify-between bg-black text-base text-white z-40 w-full">
 			<div className="flex m-2">Felt</div>

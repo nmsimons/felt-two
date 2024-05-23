@@ -271,11 +271,9 @@ export class FeltApplication {
 	public changeSelectedShapes = (f: Function): void => {
 		Tree.runTransaction(this.shapeTree.root, () => {
 			// Find the client object for the current client from the selection tree by clientId
-			const client = this.selection.root.clients.find(
-				(client) => client.clientId === this.audience.getMyself()?.id,
-			);
+			const client = this.getSelectionClient();
 
-			if (client === undefined || client === null || client.selected.length === 0) return;
+			if (client.selected.length === 0) return;
 
 			// create a copy of the client.selected array
 			const selected = [...client.selected];
@@ -290,6 +288,22 @@ export class FeltApplication {
 		});
 	};
 
+	// A function that calls the passed function for a single selected shape
+	public changeSingleSelectedShape = (f: Function): void => {
+		Tree.runTransaction(this.shapeTree.root, () => {
+			// Find the client object for the current client from the selection tree by clientId
+			const client = this.getSelectionClient();
+
+			if (client.selected.length === 0) return;
+
+			// Find the local shape object by id in the canvas
+			const shape = this.canvas.getChildByLabel(client.selected[0]) as FeltShape | undefined;
+			if (shape instanceof FeltShape) {
+				f(shape);
+			}
+		});
+	};
+
 	// Function passed to React to change the color of selected shapes
 	public changeColorofSelected = (color: Color): void => {
 		this.changeSelectedShapes((shape: FeltShape) => this.changeColor(shape, color));
@@ -297,13 +311,23 @@ export class FeltApplication {
 
 	// Function passed to React to delete selected shapes
 	public deleteSelectedShapes = (): void => {
-		this.changeSelectedShapes((shape: FeltShape) => this.deleteShape(shape));
+		this.changeSingleSelectedShape((shape: FeltShape) => this.deleteShape(shape));
 	};
 
 	public bringSelectedToFront = (): void => {
-		this.changeSelectedShapes(
-			(shape: FeltShape) => this.bringToFront(shape), // fix this
-		);
+		this.changeSingleSelectedShape((shape: FeltShape) => this.bringToFront(shape));
+	};
+
+	public sendSelectedToBack = (): void => {
+		this.changeSingleSelectedShape((shape: FeltShape) => this.sendToBack(shape));
+	};
+
+	public sendSelectedBackward = (): void => {
+		this.changeSingleSelectedShape((shape: FeltShape) => this.sendBackward(shape));
+	};
+
+	public bringSelectedForward = (): void => {
+		this.changeSingleSelectedShape((shape: FeltShape) => this.bringForward(shape));
 	};
 
 	public deleteAllShapes = (): void => {
@@ -317,9 +341,6 @@ export class FeltApplication {
 
 	// Called when a shape is deleted in the Fluid Data
 	public deleteLocalShape = (shape: FeltShape): void => {
-		// Remove the shape from the selection tree
-		this.clearFluidSelectionForShape(shape);
-
 		// Remove the shape from the canvas
 		this.canvas.removeChild(shape);
 
@@ -328,11 +349,23 @@ export class FeltApplication {
 		// shape.destroy();
 	};
 
-	public bringToFront = (shape: FeltShape): void => {
+	private bringToFront = (shape: FeltShape): void => {
 		shape.bringToFront();
 	};
 
-	public setFluidSelection = (shape: FeltShape): void => {
+	private sendToBack = (shape: FeltShape): void => {
+		shape.sendToBack();
+	};
+
+	private sendBackward = (shape: FeltShape): void => {
+		shape.sendBackward();
+	};
+
+	private bringForward = (shape: FeltShape): void => {
+		shape.bringForward();
+	};
+
+	public getSelectionClient = (): Client => {
 		let client = this.selection.root.clients.find(
 			(client) => client.clientId === this.audience.getMyself()?.id,
 		);
@@ -345,10 +378,29 @@ export class FeltApplication {
 			this.selection.root.clients.insertAtEnd(client);
 		}
 
-		if (client !== undefined && client !== null) {
-			if (!client.selected.includes(shape.id)) {
-				client.selected.insertAtEnd(shape.id);
-			}
+		return client;
+	};
+
+	public selectAllShapes = (): void => {
+		const client = this.getSelectionClient();
+
+		Tree.runTransaction(this.selection.root, () => {
+			// Clear the selection for the current client
+			this.clearFluidSelection();
+
+			// Add all the shape ids to an array
+			const shapeIds = this.shapeTree.root.map((shape) => shape.id);
+
+			// Add all shapes to the selection for the current client
+			client.selected.insertAtEnd(...shapeIds);
+		});
+	};
+
+	public setFluidSelection = (shape: FeltShape): void => {
+		const client = this.getSelectionClient();
+
+		if (!client.selected.includes(shape.id)) {
+			client.selected.insertAtEnd(shape.id);
 		}
 	};
 
