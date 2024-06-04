@@ -266,7 +266,7 @@ export class FeltApplication {
 
 	// A function that iterates over all selected shapes and calls the passed function
 	// for each shape
-	public changeSelectedShapes = (f: Function): void => {
+	private changeSelectedShapes = (f: Function): void => {
 		Tree.runTransaction(this.shapeTree.root, () => {
 			// Find the client object for the current client from the selection tree by clientId
 			const client = this.getSelectionClient();
@@ -287,7 +287,7 @@ export class FeltApplication {
 	};
 
 	// A function that calls the passed function for a single selected shape
-	public changeSingleSelectedShape = (f: Function): void => {
+	private changeSingleSelectedShape = (f: Function): void => {
 		Tree.runTransaction(this.shapeTree.root, () => {
 			// Find the client object for the current client from the selection tree by clientId
 			const client = this.getSelectionClient();
@@ -302,6 +302,37 @@ export class FeltApplication {
 		});
 	};
 
+	private organizeSelectedShapesIntoRanges = (): Array<Array<FeltShape>> => {
+		const ranges: Array<Array<FeltShape>> = [];
+		const client = this.getSelectionClient();
+
+		if (client.selected.length === 0) return ranges;
+
+		const selected = [...client.selected];
+
+		let range: Array<FeltShape> = [];
+		let last = -1;
+
+		for (const id of selected) {
+			const shape = this.canvas.getChildByLabel(id) as FeltShape | undefined;
+			if (shape instanceof FeltShape) {
+				if (last === -1) {
+					range.push(shape);
+				} else if (last + 1 === shape.zIndex) {
+					range.push(shape);
+				} else {
+					ranges.push(range);
+					range = [shape];
+				}
+				last = shape.zIndex;
+			}
+		}
+
+		ranges.push(range);
+
+		return ranges;
+	};
+
 	// Function passed to React to change the color of selected shapes
 	public changeColorofSelected = (color: Color): void => {
 		this.changeSelectedShapes((shape: FeltShape) => this.changeColor(shape, color));
@@ -309,7 +340,22 @@ export class FeltApplication {
 
 	// Function passed to React to delete selected shapes
 	public deleteSelectedShapes = (): void => {
-		this.changeSingleSelectedShape((shape: FeltShape) => this.deleteShape(shape));
+		// If only one shape is selected, delete it
+		if (this.getSelectionClient().selected.length === 1) {
+			this.changeSingleSelectedShape((shape: FeltShape) => this.deleteShape(shape));
+			return;
+		}
+
+		// If multiple shapes are selected, organize them into ranges
+		// and delete them in ranges
+		const ranges = this.organizeSelectedShapesIntoRanges();
+		Tree.runTransaction(this.shapeTree.root, () => {
+			for (const range of ranges) {
+				const start = range[0].zIndex;
+				const end = range[range.length - 1].zIndex;
+				this.deleteRangeOfShapes(start, end + 1);
+			}
+		});
 	};
 
 	public bringSelectedToFront = (): void => {
@@ -330,6 +376,11 @@ export class FeltApplication {
 
 	public deleteAllShapes = (): void => {
 		this.shapeTree.root.removeRange();
+	};
+
+	public deleteRangeOfShapes = (start: number, end: number): void => {
+		console.log("Deleting range of shapes", start, end);
+		this.shapeTree.root.removeRange(start, end);
 	};
 
 	private deleteShape = (shape: FeltShape): void => {
@@ -399,6 +450,9 @@ export class FeltApplication {
 
 		if (!client.selected.includes(shape.id)) {
 			client.selected.insertAtEnd(shape.id);
+		} else {
+			const i = client.selected.findIndex((id) => id === shape.id);
+			client.selected.removeAt(i);
 		}
 	};
 

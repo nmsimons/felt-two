@@ -217,7 +217,7 @@ export function Toolbar(props: { feltApplication: FeltApplication }) {
 				<IconButton
 					icon={<DeleteFilled />}
 					color={shapeButtonColor}
-					disabled={!selected || multiSelected}
+					disabled={!selected}
 					handleClick={() => props.feltApplication.deleteSelectedShapes()}
 				/>
 				<IconButton
