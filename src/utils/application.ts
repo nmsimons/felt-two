@@ -309,12 +309,16 @@ export class FeltApplication {
 		if (client.selected.length === 0) return ranges;
 
 		const selected = [...client.selected];
+		const selectedFeltShapes = selected.map(
+			(id) => this.canvas.getChildByLabel(id) as FeltShape,
+		);
+		selectedFeltShapes.sort((a, b) => a.zIndex - b.zIndex);
 
 		let range: Array<FeltShape> = [];
+
 		let last = -1;
 
-		for (const id of selected) {
-			const shape = this.canvas.getChildByLabel(id) as FeltShape | undefined;
+		for (const shape of selectedFeltShapes) {
 			if (shape instanceof FeltShape) {
 				if (last === -1) {
 					range.push(shape);
