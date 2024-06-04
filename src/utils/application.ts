@@ -194,8 +194,10 @@ export class FeltApplication {
 			this.canvas,
 			shape,
 			(shape: FeltShape) => {
-				this.clearFluidSelection();
-				this.setFluidSelection(shape);
+				Tree.runTransaction(this.selection.root, () => {
+					this.clearFluidSelection();
+					this.setFluidSelection(shape);
+				});
 			},
 			(shape: FeltShape) => {
 				this.setFluidSelection(shape);
@@ -347,20 +349,14 @@ export class FeltApplication {
 		// If no shapes are selected, return
 		if (this.getSelectionClient().selected.length === 0) return;
 
-		// If only one shape is selected, delete it
-		if (this.getSelectionClient().selected.length === 1) {
-			this.changeSingleSelectedShape((shape: FeltShape) => this.deleteShape(shape));
-			return;
-		}
-
 		// If multiple shapes are selected, organize them into ranges
 		// and delete them in ranges
 		const ranges = this.organizeSelectedShapesIntoRanges();
 		Tree.runTransaction(this.shapeTree.root, () => {
 			for (const range of ranges) {
 				const start = range[0].zIndex;
-				const end = range[range.length - 1].zIndex;
-				this.deleteRangeOfShapes(start, end + 1);
+				const end = range[range.length - 1].zIndex + 1;
+				this.deleteRangeOfShapes(start, end);
 			}
 		});
 	};
@@ -382,19 +378,22 @@ export class FeltApplication {
 	};
 
 	public deleteAllShapes = (): void => {
-		this.shapeTree.root.removeRange();
+		this.deleteRangeOfShapes(0, this.shapeTree.root.length);
 	};
 
 	public deleteRangeOfShapes = (start: number, end: number): void => {
 		// Test to see if the range is valid
 		if (start >= end) return;
 
+		// clear the selection for the current client
+		this.clearFluidSelection();
+
 		this.shapeTree.root.removeRange(start, end);
 	};
 
 	private deleteShape = (shape: FeltShape): void => {
-		const i = Tree.key(shape.shape);
-		this.shapeTree.root.removeAt(i as number);
+		const i = Tree.key(shape.shape) as number;
+		this.deleteRangeOfShapes(i, i + 1);
 	};
 
 	// Called when a shape is deleted in the Fluid Data

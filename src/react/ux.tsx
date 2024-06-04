@@ -4,7 +4,7 @@
  */
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Color, ShapeType as S, UXColor } from "../utils/utils.js";
 import { ConnectionState, Tree } from "fluid-framework";
 import { FeltApplication as FeltApplication } from "../utils/application.js";
@@ -26,6 +26,7 @@ import {
 	SelectAllOnFilled,
 } from "@fluentui/react-icons";
 import "../output.css";
+import React from "react";
 
 // eslint-disable-next-line react/prop-types
 export function ReactApp(props: { feltApplication: FeltApplication }): JSX.Element {
@@ -39,7 +40,7 @@ export function ReactApp(props: { feltApplication: FeltApplication }): JSX.Eleme
 			}
 		}
 	};
-	React.useEffect(() => {
+	useEffect(() => {
 		window.addEventListener("keydown", (event) => keyDownHandler(event));
 	}, []);
 
@@ -63,7 +64,7 @@ export function Toolbar(props: { feltApplication: FeltApplication }) {
 	const [canUndo, setCanUndo] = React.useState(undoRedo.getUndoStackLength() > 0);
 	const [canRedo, setCanRedo] = React.useState(undoRedo.getRedoStackLength() > 0);
 
-	React.useEffect(() => {
+	useEffect(() => {
 		const unsubscribe = undoRedo.events.on("commitApplied", () => {
 			setCanUndo(undoRedo.getUndoStackLength() > 0);
 			setCanRedo(undoRedo.getRedoStackLength() > 0);
@@ -73,8 +74,8 @@ export function Toolbar(props: { feltApplication: FeltApplication }) {
 		};
 	}, []);
 
-	React.useEffect(() => {
-		const unsubscribe = Tree.on(props.feltApplication.selection.root, "treeChanged", () => {
+	useEffect(() => {
+		const unsubscribe = props.feltApplication.selection.events.on("afterBatch", () => {
 			const client = props.feltApplication.audience.getMyself();
 			if (client !== undefined) {
 				const selected = props.feltApplication.selection.root.clients.find(
@@ -97,7 +98,7 @@ export function Toolbar(props: { feltApplication: FeltApplication }) {
 		};
 	}, []);
 
-	React.useEffect(() => {
+	useEffect(() => {
 		props.feltApplication.canvas.on("childAdded", () => {
 			setMaxReached(props.feltApplication.maxReached);
 		});
@@ -259,7 +260,7 @@ export function Canvas(props: { feltApplication: FeltApplication }): JSX.Element
 }
 
 export function SignalsToggle(props: { feltApplication: FeltApplication }) {
-	const [checked, setChecked] = React.useState(props.feltApplication.useSignals);
+	const [checked, setChecked] = useState(props.feltApplication.useSignals);
 
 	const handleChange = () => {
 		props.feltApplication.useSignals = !props.feltApplication.useSignals;
@@ -284,7 +285,7 @@ export function SignalsToggle(props: { feltApplication: FeltApplication }) {
 }
 
 export function IndexToggle(props: { feltApplication: FeltApplication }) {
-	const [, setChecked] = React.useState(props.feltApplication.showIndex);
+	const [, setChecked] = useState(props.feltApplication.showIndex);
 
 	const handleChange = () => {
 		props.feltApplication.showIndex = !props.feltApplication.showIndex;
@@ -370,9 +371,9 @@ export function Audience(props: { feltApplication: FeltApplication }): JSX.Eleme
 	const audience = props.feltApplication.audience;
 
 	// retrieve all the members currently in the session
-	const [members, setMembers] = React.useState(Array.from(audience.getMembers().values()));
+	const [members, setMembers] = useState(Array.from(audience.getMembers().values()));
 
-	const setMembersCallback = React.useCallback(
+	const setMembersCallback = useCallback(
 		() => setMembers(Array.from(audience.getMembers().values())),
 		[setMembers, audience],
 	);
