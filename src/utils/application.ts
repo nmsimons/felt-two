@@ -344,6 +344,9 @@ export class FeltApplication {
 
 	// Function passed to React to delete selected shapes
 	public deleteSelectedShapes = (): void => {
+		// If no shapes are selected, return
+		if (this.getSelectionClient().selected.length === 0) return;
+
 		// If only one shape is selected, delete it
 		if (this.getSelectionClient().selected.length === 1) {
 			this.changeSingleSelectedShape((shape: FeltShape) => this.deleteShape(shape));
@@ -383,7 +386,9 @@ export class FeltApplication {
 	};
 
 	public deleteRangeOfShapes = (start: number, end: number): void => {
-		console.log("Deleting range of shapes", start, end);
+		// Test to see if the range is valid
+		if (start >= end) return;
+
 		this.shapeTree.root.removeRange(start, end);
 	};
 
