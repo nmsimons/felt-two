@@ -310,28 +310,23 @@ export class FeltApplication {
 
 		if (client.selected.length === 0) return ranges;
 
-		const selected = [...client.selected];
-		const selectedFeltShapes = selected.map(
-			(id) => this.canvas.getChildByLabel(id) as FeltShape,
-		);
-		selectedFeltShapes.sort((a, b) => a.zIndex - b.zIndex);
+		const selected = Array.from(client.selected)
+			.map((id) => this.canvas.getChildByLabel(id) as FeltShape)
+			.sort((a, b) => a.zIndex - b.zIndex);
 
 		let range: Array<FeltShape> = [];
-
 		let last = -1;
 
-		for (const shape of selectedFeltShapes) {
-			if (shape instanceof FeltShape) {
-				if (last === -1) {
-					range.push(shape);
-				} else if (last + 1 === shape.zIndex) {
-					range.push(shape);
-				} else {
-					ranges.push(range);
-					range = [shape];
-				}
-				last = shape.zIndex;
+		for (const shape of selected) {
+			if (last === -1) {
+				range.push(shape);
+			} else if (last + 1 === shape.zIndex) {
+				range.push(shape);
+			} else {
+				ranges.push(range);
+				range = [shape];
 			}
+			last = shape.zIndex;
 		}
 
 		ranges.push(range);
@@ -389,11 +384,6 @@ export class FeltApplication {
 		this.clearFluidSelection();
 
 		this.shapeTree.root.removeRange(start, end);
-	};
-
-	private deleteShape = (shape: FeltShape): void => {
-		const i = Tree.key(shape.shape) as number;
-		this.deleteRangeOfShapes(i, i + 1);
 	};
 
 	// Called when a shape is deleted in the Fluid Data
