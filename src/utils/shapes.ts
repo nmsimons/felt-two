@@ -49,7 +49,7 @@ export class FeltShape extends Container {
 		this.id = this.shape.id;
 		this.label = this.shape.id;
 		this._shape = new Graphics();
-		this._text = this.drawLabel(this.z.toString());
+		this._text = this.drawText(this.z.toString());
 		this.initProperties();
 		this.initPixiShape();
 		this.initUserEvents();
@@ -85,7 +85,7 @@ export class FeltShape extends Container {
 			this.dragging = true;
 		};
 
-		const onDragEnd = (event: FederatedPointerEvent) => {
+		const onDragEnd = () => {
 			if (this.dragging) {
 				this.canvas.off("pointermove", onDragMove);
 				this.canvas.off("pointerup", onDragEnd);
@@ -218,11 +218,11 @@ export class FeltShape extends Container {
 		this.x = this.shape.x;
 		this.y = this.shape.y;
 		this.zIndex = this.z;
-		this._text.text = this.z.toString();
+		this.setText(this.z.toString());
 		this._shape.tint = Number(this.color);
 	}
 
-	private drawLabel(value: string): Text {
+	private drawText(value: string): Text {
 		const style = new TextStyle({
 			align: "center",
 			fill: "white",
@@ -234,6 +234,12 @@ export class FeltShape extends Container {
 		text.x = -text.width / 2;
 		text.y = -text.height / 2;
 		return text;
+	}
+
+	private setText(value: string) {
+		this._text.text = value;
+		this._text.x = -this._text.width / 2;
+		this._text.y = -this._text.height / 2;
 	}
 
 	public showSelection() {
