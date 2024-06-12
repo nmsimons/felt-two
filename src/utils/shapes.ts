@@ -3,18 +3,11 @@ import { Graphics, TextStyle, Text, Container, FederatedPointerEvent } from "pix
 import { Color, ShapeType } from "./utils.js";
 import { IAzureAudience } from "@fluidframework/azure-client";
 import { Pixi2Signal, Signals } from "./wrappers.js";
-import { Signaler } from "@fluid-experimental/data-objects";
+import { ISignaler } from "@fluid-experimental/data-objects/";
 import { Tree } from "fluid-framework";
 
-export function createShapeNode(
-	shapeType: ShapeType,
-	color: Color,
-	id: string,
-	x: number,
-	y: number,
-): Shape {
+export function createShapeNode(shapeType: ShapeType, color: Color, x: number, y: number): Shape {
 	return new Shape({
-		id,
 		x,
 		y,
 		color,
@@ -43,7 +36,7 @@ export class FeltShape extends Container {
 		readonly audience: IAzureAudience,
 		public useSignals: () => boolean,
 		readonly setShowIndex: boolean,
-		readonly signaler: Signaler,
+		readonly signaler: ISignaler,
 	) {
 		super();
 		this.id = this.shape.id;

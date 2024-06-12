@@ -8,7 +8,7 @@ import { TreeConfiguration, SchemaFactory } from "fluid-framework";
 const sf = new SchemaFactory("fc1db2e8-0a00-11ee-be56-0242ac120002");
 
 export class Shape extends sf.object("Shape", {
-	id: sf.string,
+	id: sf.identifier,
 	x: sf.number,
 	y: sf.number,
 	color: sf.string,

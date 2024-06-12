@@ -1,4 +1,4 @@
-import { OdspClient } from "@fluid-experimental/odsp-client";
+import { OdspClient } from "@fluidframework/odsp-client";
 import { AzureClient } from "@fluidframework/azure-client";
 import React from "react";
 import { createRoot } from "react-dom/client";
@@ -8,7 +8,7 @@ import { sessionTreeConfiguration } from "./schema/session_schema.js";
 import { containerSchema } from "./schema/container_schema.js";
 import { loadFluidData } from "./infra/fluid.js";
 import { IFluidContainer } from "fluid-framework";
-import { Signaler } from "@fluid-experimental/data-objects";
+import { ISignaler } from "@fluid-experimental/data-objects";
 import { FeltApplication } from "./utils/application.js";
 
 export async function loadApp(
@@ -23,7 +23,7 @@ export async function loadApp(
 	const appTree = container.initialObjects.appData.schematize(appTreeConfiguration);
 
 	// initialize signal manager
-	const signaler = container.initialObjects.signalManager as Signaler;
+	const signaler = container.initialObjects.signalManager as ISignaler;
 
 	// create the root element for React
 	const app = document.createElement("div");

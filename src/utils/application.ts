@@ -1,9 +1,8 @@
 /* eslint-disable @typescript-eslint/ban-types */
 /* eslint-disable @typescript-eslint/no-non-null-asserted-optional-chain */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
-import { Signaler, SignalListener } from "@fluid-experimental/data-objects";
+import { ISignaler, SignalListener } from "@fluid-experimental/data-objects";
 import { IAzureAudience } from "@fluidframework/azure-client";
-import { v4 as uuid } from "uuid";
 import { Shape, Shapes } from "../schema/app_schema.js";
 import { FeltShape, createShapeNode } from "./shapes.js";
 import { Color, getNextColor, getNextShape, getRandomInt, ShapeType } from "./utils.js";
@@ -21,7 +20,7 @@ export class FeltApplication {
 		public selection: TreeView<typeof Session>,
 		public audience: IAzureAudience,
 		public useSignals: boolean,
-		public signaler: Signaler,
+		public signaler: ISignaler,
 		public shapeTree: TreeView<typeof Shapes>,
 		public container: IFluidContainer,
 		public maxShapes: number = 1000,
@@ -90,7 +89,7 @@ export class FeltApplication {
 		shapeTree: TreeView<typeof Shapes>,
 		container: IFluidContainer,
 		audience: IAzureAudience,
-		signaler: Signaler,
+		signaler: ISignaler,
 		selection: TreeView<typeof Session>,
 	): Promise<FeltApplication> {
 		// create PIXI app
@@ -225,7 +224,6 @@ export class FeltApplication {
 		const shape = createShapeNode(
 			shapeType,
 			color,
-			uuid(),
 			getRandomInt(FeltShape.size, this.pixiApp.screen.width - FeltShape.size),
 			getRandomInt(FeltShape.size, this.pixiApp.screen.height - FeltShape.size),
 		);
@@ -249,7 +247,6 @@ export class FeltApplication {
 					const shape = createShapeNode(
 						shapeType,
 						color,
-						uuid(),
 						getRandomInt(FeltShape.size, this.pixiApp.screen.width - FeltShape.size),
 						getRandomInt(FeltShape.size, this.pixiApp.screen.height - FeltShape.size),
 					);
@@ -436,7 +433,7 @@ export class FeltApplication {
 			this.clearFluidSelection();
 
 			// Add all the shape ids to an array
-			const shapeIds = this.shapeTree.root.map((shape) => shape.id);
+			const shapeIds = this.shapeTree.root.map((shape) => shape.id as string);
 
 			// Add all shapes to the selection for the current client
 			client.selected.insertAtEnd(...shapeIds);
@@ -512,12 +509,9 @@ export class FeltApplication {
 
 	public updateAllShapes = () => {
 		const seenIds = new Set<string>();
-		if (this.shapeTree.error !== undefined) {
-			return;
-		}
 		for (const shape of this.shapeTree.root) {
-			seenIds.add(shape.id);
-			let localShape = this.canvas.getChildByLabel(shape.id);
+			seenIds.add(shape.id as string);
+			let localShape = this.canvas.getChildByLabel(shape.id as string);
 			if (localShape === undefined || localShape === null) {
 				localShape = this.addNewLocalShape(shape);
 			} else if (localShape.zIndex !== Tree.key(shape)) {
