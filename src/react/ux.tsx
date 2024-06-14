@@ -75,7 +75,7 @@ export function Toolbar(props: { feltApplication: FeltApplication }) {
 	}, []);
 
 	useEffect(() => {
-		const unsubscribe = props.feltApplication.selection.events.on("afterBatch", () => {
+		const unsubscribe = Tree.on(props.feltApplication.selection.root, "treeChanged", () => {
 			const client = props.feltApplication.audience.getMyself();
 			if (client !== undefined) {
 				const selected = props.feltApplication.selection.root.clients.find(

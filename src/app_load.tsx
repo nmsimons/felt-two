@@ -19,8 +19,15 @@ export async function loadApp(
 	const { services, container } = await loadFluidData(containerId, containerSchema, client);
 
 	// Initialize the SharedTree DDSes
-	const sessionTree = container.initialObjects.sessionData.schematize(sessionTreeConfiguration);
-	const appTree = container.initialObjects.appData.schematize(appTreeConfiguration);
+	const appTree = container.initialObjects.appData.viewWith(appTreeConfiguration);
+	if (appTree.compatibility.canInitialize) {
+		appTree.initialize([]);
+	}
+
+	const sessionTree = container.initialObjects.sessionData.viewWith(sessionTreeConfiguration);
+	if (sessionTree.compatibility.canInitialize) {
+		sessionTree.initialize({ clients: [] });
+	}
 
 	// initialize signal manager
 	const signaler = container.initialObjects.signalManager as ISignaler;

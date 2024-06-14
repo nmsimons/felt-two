@@ -1,4 +1,4 @@
-import { TreeConfiguration, SchemaFactory } from "fluid-framework";
+import { SchemaFactory, TreeViewConfiguration } from "fluid-framework";
 
 // Schema is defined using a factory object that generates classes for objects as well
 // as list and map nodes.
@@ -23,9 +23,7 @@ export class Shapes extends sf.array("Shapes", Shape) {}
 
 // Export the tree config appropriate for this schema.
 // This is passed into the SharedTree when it is initialized.
-export const appTreeConfiguration = new TreeConfiguration(
+export const appTreeConfiguration = new TreeViewConfiguration({
 	// Schema for the root
-	Shapes,
-	// initial tree
-	() => [],
-);
+	schema: Shapes,
+});
