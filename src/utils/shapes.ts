@@ -206,6 +206,7 @@ export class FeltShape extends Container {
 	};
 
 	public sync() {
+		console.log("syncing", this.shape.id);
 		this.x = this.shape.x;
 		this.y = this.shape.y;
 		this.zIndex = this.z;
