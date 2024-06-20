@@ -151,9 +151,7 @@ export class FeltShape extends Container {
 	public bringToFront() {
 		const parent = Tree.parent(this.shape);
 		if (Tree.is(parent, FluidShapes)) {
-			Tree.runTransaction(this.shape, () => {
-				parent.moveToEnd(Tree.key(this.shape) as number);
-			});
+			parent.moveToEnd(Tree.key(this.shape) as number);
 		}
 	}
 

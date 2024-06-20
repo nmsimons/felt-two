@@ -14,6 +14,7 @@ import { createUndoRedoStacks, UndoRedo } from "./undo.js";
 
 export class FeltApplication {
 	readonly undoRedo: UndoRedo;
+	private _selectedShapes: Array<FeltShape> = [];
 
 	private constructor(
 		public pixiApp: PIXIApplication,
@@ -248,45 +249,24 @@ export class FeltApplication {
 
 	// Changes the color of a shape and syncs with the Fluid data
 	public changeColor = (shape: FeltShape, color: Color): void => {
-		if (shape instanceof FeltShape) shape.color = color;
+		shape.color = color;
 	};
 
 	// A function that iterates over all selected shapes and calls the passed function
 	// for each shape
-	private changeSelectedShapes = (f: Function): void => {
+	private changeSelectedShapes = (f: (shape: FeltShape) => void): void => {
+		if (this._selectedShapes.length === 0) return;
 		Tree.runTransaction(this.shapeTree.root, () => {
-			// Find the client object for the current client from the selection tree by clientId
-			const client = this.getSelectionClient();
-
-			if (client.selected.length === 0) return;
-
-			// create a copy of the client.selected array
-			const selected = [...client.selected];
-
-			for (const id of selected) {
-				// Find the local shape object by id in the canvas
-				const shape = this.canvas.getChildByLabel(id) as FeltShape | undefined;
-				if (shape instanceof FeltShape) {
-					f(shape);
-				}
+			for (const shape of this._selectedShapes) {
+				f(shape);
 			}
 		});
 	};
 
 	// A function that calls the passed function for a single selected shape
-	private changeSingleSelectedShape = (f: Function): void => {
-		Tree.runTransaction(this.shapeTree.root, () => {
-			// Find the client object for the current client from the selection tree by clientId
-			const client = this.getSelectionClient();
-
-			if (client.selected.length === 0) return;
-
-			// Find the local shape object by id in the canvas
-			const shape = this.canvas.getChildByLabel(client.selected[0]) as FeltShape | undefined;
-			if (shape instanceof FeltShape) {
-				f(shape);
-			}
-		});
+	private changeSingleSelectedShape = (f: (shape: FeltShape) => void): void => {
+		if (this._selectedShapes.length === 0) return;
+		f(this._selectedShapes[0]);
 	};
 
 	private organizeSelectedShapesIntoRanges = (): Array<Array<FeltShape>> => {
@@ -462,6 +442,9 @@ export class FeltApplication {
 	};
 
 	public clearLocalSelectionAndPresence = (): void => {
+		// clear the local selection array
+		this._selectedShapes = [];
+
 		// iterate over the items in the canvas and remove the selection
 		for (const child of this.canvas.children) {
 			if (child instanceof FeltShape) {
@@ -479,6 +462,8 @@ export class FeltApplication {
 				for (const id of client.selected) {
 					const localShape = this.canvas.getChildByLabel(id) as FeltShape | undefined;
 					if (localShape !== undefined && localShape !== null) {
+						// add the shape to the local selection array
+						this._selectedShapes.push(localShape);
 						localShape.showSelection();
 					}
 				}
