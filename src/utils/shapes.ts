@@ -166,7 +166,6 @@ export class FeltShape extends Container {
 		const parent = Tree.parent(this.shape);
 		if (Tree.is(parent, FluidShapes)) {
 			const i = Tree.key(this.shape) as number;
-			console.log(i, parent.length);
 			if (parent.length - 1 > i) {
 				parent.moveToIndex(i + 2, i);
 			}
@@ -206,7 +205,6 @@ export class FeltShape extends Container {
 	};
 
 	public sync() {
-		console.log("syncing", this.shape.id);
 		this.x = this.shape.x;
 		this.y = this.shape.y;
 		this.zIndex = this.z;

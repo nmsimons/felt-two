@@ -40,7 +40,6 @@ export class FeltApplication {
 		// event handler for detecting remote changes to Fluid data and updating
 		// the local data
 		Tree.on(shapeTree.root, "nodeChanged", () => {
-			console.log("Node changed");
 			this.updateAllShapes();
 		});
 
