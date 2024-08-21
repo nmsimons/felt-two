@@ -1,4 +1,4 @@
-import { OdspClient } from "@fluidframework/odsp-client";
+import { OdspClient } from "@fluidframework/odsp-client/beta";
 import { AzureClient } from "@fluidframework/azure-client";
 import React from "react";
 import { createRoot } from "react-dom/client";

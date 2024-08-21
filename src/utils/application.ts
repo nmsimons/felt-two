@@ -24,7 +24,7 @@ export class FeltApplication {
 		public signaler: ISignaler,
 		public shapeTree: TreeView<typeof Shapes>,
 		public container: IFluidContainer,
-		public maxShapes: number = 1000,
+		public maxShapes: number = 10000,
 	) {
 		// Initialize the canvas container
 		this._canvas = FeltApplication.createCanvasContainer(pixiApp, () => {
