@@ -4,7 +4,7 @@ import { Color, ShapeType } from "./utils.js";
 import { IAzureAudience } from "@fluidframework/azure-client";
 import { Pixi2Signal, Signals } from "./wrappers.js";
 import { ISignaler } from "@fluid-experimental/data-objects/";
-import { Tree } from "fluid-framework";
+import { Tree, TreeStatus } from "fluid-framework";
 
 export function createShapeNode(shapeType: ShapeType, color: Color, x: number, y: number): Shape {
 	return new Shape({
@@ -141,6 +141,7 @@ export class FeltShape extends Container {
 	}
 
 	set color(color: Color) {
+		if (Tree.status(this.shape) !== TreeStatus.InDocument) return;
 		this.shape.color = color;
 	}
 
@@ -187,6 +188,8 @@ export class FeltShape extends Container {
 	}
 
 	private updateFluidLocation = (x: number, y: number) => {
+		if (Tree.status(this.shape) !== TreeStatus.InDocument) return;
+
 		// Store the position in Fluid
 		if (this.dragging && this.useSignals()) {
 			const sig = Pixi2Signal(this);
@@ -209,7 +212,7 @@ export class FeltShape extends Container {
 		this.y = this.shape.y;
 		this.zIndex = this.z;
 		this.setText(this.z.toString());
-		this._shape.tint = Number(this.color);
+		this._shape.tint = Number(this.shape.color);
 	}
 
 	private drawText(value: string): Text {
