@@ -83,7 +83,6 @@ export class FeltShape extends Container {
 			if (!this.selected) {
 				select(event);
 				this._selectHandled = true;
-				console.log("selecting");
 			} else {
 				this._selectHandled = false;
 			}
@@ -101,7 +100,6 @@ export class FeltShape extends Container {
 				this.updateFluidLocation(this.x, this.y);
 				if (!this._moved && !this._selectHandled) {
 					select(event);
-					console.log("deselecting");
 				}
 			}
 		};
