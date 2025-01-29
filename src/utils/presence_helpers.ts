@@ -27,6 +27,9 @@ export class SelectionManager extends EventTarget {
 		this.valueManager.events.on("updated", () =>
 			this.dispatchEvent(new Event("selectionChanged")),
 		);
+		presence.events.on("attendeeDisconnected", () => {
+			this.dispatchEvent(new Event("selectionChanged"));
+		});
 		this.sessionId = presence.getMyself().sessionId;
 	}
 
@@ -130,12 +133,5 @@ export class SelectionManager extends EventTarget {
 		}
 
 		return remoteSelected;
-	}
-
-	/** Dispose of the selection manager */
-	public dispose() {
-		this.valueManager.events.off("updated", () =>
-			this.dispatchEvent(new Event("selectionChanged")),
-		);
 	}
 }

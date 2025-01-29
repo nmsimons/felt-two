@@ -14,7 +14,6 @@ import { SelectionManager } from "./presence_helpers.js";
 
 export class FeltApplication {
 	readonly undoRedo: UndoRedo;
-	// private _selectedShapes: Array<FeltShape> = [];
 
 	private constructor(
 		public pixiApp: PIXIApplication,
