@@ -79,20 +79,30 @@ export class FeltShape extends Container {
 		const onDragStart = (event: FederatedPointerEvent) => {
 			this._offset = calculateOffset(event);
 			this._moved = false;
-			if (!this.selected) onSelect(event);
+			this.dragging = true;
+			if (!this.selected) {
+				select(event);
+				this._selectHandled = true;
+				console.log("selecting");
+			} else {
+				this._selectHandled = false;
+			}
 			this.canvas.on("pointerup", onDragEnd);
 			this.canvas.on("pointerupoutside", onDragEnd);
 			this.canvas.on("pointermove", onDragMove);
-			this.dragging = true;
 		};
 
-		const onDragEnd = () => {
+		const onDragEnd = (event: FederatedPointerEvent) => {
 			if (this.dragging) {
 				this.canvas.off("pointermove", onDragMove);
 				this.canvas.off("pointerup", onDragEnd);
 				this.canvas.off("pointerupoutside", onDragEnd);
 				this.dragging = false;
 				this.updateFluidLocation(this.x, this.y);
+				if (!this._moved && !this._selectHandled) {
+					select(event);
+					console.log("deselecting");
+				}
 			}
 		};
 
@@ -124,25 +134,16 @@ export class FeltShape extends Container {
 			};
 		};
 
-		const onSelect = (event: FederatedPointerEvent) => {
-			if (this._selectHandled) {
-				this._selectHandled = false;
-				return;
-			}
-
-			if (this._moved) return;
-
+		const select = (event: FederatedPointerEvent) => {
 			if (event.ctrlKey) {
 				this.multiSelect(this);
 			} else {
 				this.select(this);
 			}
-
-			this._selectHandled = true;
 		};
 
 		// intialize event handlers
-		this.on("pointerdown", onDragStart).on("pointerup", onSelect);
+		this.on("pointerdown", onDragStart);
 	};
 
 	public set selected(value: boolean) {
