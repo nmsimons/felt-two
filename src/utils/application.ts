@@ -9,16 +9,16 @@ import { Color, getNextColor, getNextShape, getRandomInt, ShapeType } from "./ut
 import { Container, FederatedPointerEvent, Application as PIXIApplication } from "pixi.js";
 import { ConnectionState, IFluidContainer, Tree, TreeView } from "fluid-framework";
 import { Signal2Pixi, SignalPackage, Signals } from "./wrappers.js";
-import { Client, Session } from "../schema/session_schema.js";
 import { createUndoRedoStacks, UndoRedo } from "./undo.js";
+import { SelectionManager } from "./presence_helpers.js";
 
 export class FeltApplication {
 	readonly undoRedo: UndoRedo;
-	private _selectedShapes: Array<FeltShape> = [];
+	// private _selectedShapes: Array<FeltShape> = [];
 
 	private constructor(
 		public pixiApp: PIXIApplication,
-		public selection: TreeView<typeof Session>,
+		public selection: SelectionManager,
 		public audience: IAzureAudience,
 		public useSignals: boolean,
 		public signaler: ISignaler,
@@ -28,7 +28,7 @@ export class FeltApplication {
 	) {
 		// Initialize the canvas container
 		this._canvas = FeltApplication.createCanvasContainer(pixiApp, () => {
-			this.clearFluidSelection();
+			this.selection.updateSelection([]);
 		});
 
 		// Get all existing shapes
@@ -44,13 +44,8 @@ export class FeltApplication {
 		});
 
 		// event handler for detecting changes to the selection data and updating
-		Tree.on(selection.root, "treeChanged", () => {
-			this.updateLocalSelectionAndPresence();
-		});
-
-		// When a user leaves the session, remove all that users presence data from
-		// the presence shared map. Note, all clients run this code right now
-		audience.on("membersChanged", () => {
+		// the local selection and presence
+		this.selection.addEventListener("selectionChanged", () => {
 			this.updateLocalSelectionAndPresence();
 		});
 
@@ -79,7 +74,7 @@ export class FeltApplication {
 		container: IFluidContainer,
 		audience: IAzureAudience,
 		signaler: ISignaler,
-		selection: TreeView<typeof Session>,
+		selection: SelectionManager,
 	): Promise<FeltApplication> {
 		// create PIXI app
 		const pixiApp = await this.createPixiApp();
@@ -182,13 +177,10 @@ export class FeltApplication {
 			this.canvas,
 			shape,
 			(shape: FeltShape) => {
-				Tree.runTransaction(this.selection.root, () => {
-					this.clearFluidSelection();
-					this.setFluidSelection(shape);
-				});
+				this.selection.updateSelection(shape.id);
 			},
 			(shape: FeltShape) => {
-				this.setFluidSelection(shape);
+				this.selection.addItemToSelection(shape.id);
 			},
 			this.audience,
 			() => {
@@ -255,27 +247,35 @@ export class FeltApplication {
 	// A function that iterates over all selected shapes and calls the passed function
 	// for each shape
 	private changeSelectedShapes = (f: (shape: FeltShape) => void): void => {
-		if (this._selectedShapes.length === 0) return;
+		if (this.selection.getLocalSelected().length === 0) return;
 		Tree.runTransaction(this.shapeTree.root, () => {
-			for (const shape of this._selectedShapes) {
-				f(shape);
+			for (const id of this.selection.getLocalSelected()) {
+				const localShape = this.canvas.getChildByLabel(id) as FeltShape | undefined;
+				if (localShape !== undefined && localShape !== null) {
+					f(localShape);
+				}
 			}
 		});
 	};
 
 	// A function that calls the passed function for a single selected shape
 	private changeSingleSelectedShape = (f: (shape: FeltShape) => void): void => {
-		if (this._selectedShapes.length === 0) return;
-		f(this._selectedShapes[0]);
+		if (this.selection.getLocalSelected().length === 0) return;
+		Tree.runTransaction(this.shapeTree.root, () => {
+			const id = this.selection.getLocalSelected()[0];
+			const localShape = this.canvas.getChildByLabel(id) as FeltShape | undefined;
+			if (localShape !== undefined && localShape !== null) {
+				f(localShape);
+			}
+		});
 	};
 
 	private organizeSelectedShapesIntoRanges = (): Array<Array<FeltShape>> => {
 		const ranges: Array<Array<FeltShape>> = [];
-		const client = this.getSelectionClient();
 
-		if (client.selected.length === 0) return ranges;
+		if (this.selection.getLocalSelected().length === 0) return ranges;
 
-		const selected = Array.from(client.selected)
+		const selected = Array.from(this.selection.getLocalSelected())
 			.map((id) => this.canvas.getChildByLabel(id) as FeltShape)
 			.sort((a, b) => a.zIndex - b.zIndex);
 
@@ -307,7 +307,7 @@ export class FeltApplication {
 	// Function passed to React to delete selected shapes
 	public deleteSelectedShapes = (): void => {
 		// If no shapes are selected, return
-		if (this.getSelectionClient().selected.length === 0) return;
+		if (this.selection.getLocalSelected().length === 0) return;
 
 		// If multiple shapes are selected, organize them into ranges
 		// and delete them in ranges
@@ -345,10 +345,11 @@ export class FeltApplication {
 		// Test to see if the range is valid
 		if (start >= end) return;
 
-		// clear the selection for the current client
-		this.clearFluidSelection();
-
+		// Remove the shapes from the SharedTree
 		this.shapeTree.root.removeRange(start, end);
+
+		// clear the selection for the current client
+		this.selection.updateSelection([]);
 	};
 
 	// Called when a shape is deleted in the Fluid Data
@@ -377,74 +378,24 @@ export class FeltApplication {
 		shape.bringForward();
 	};
 
-	public getSelectionClient = (): Client => {
-		let client = this.selection.root.clients.find(
-			(client) => client.clientId === this.audience.getMyself()?.id,
-		);
-
-		if (client === undefined || client === null) {
-			client = new Client({
-				clientId: this.audience.getMyself()?.id!,
-				selected: [],
-			});
-			this.selection.root.clients.insertAtEnd(client);
-		}
-
-		return client;
-	};
-
 	public selectAllShapes = (): void => {
-		const client = this.getSelectionClient();
+		// Add all the shape ids to an array
+		const shapeIds = this.shapeTree.root.map((shape) => shape.id as string);
 
-		Tree.runTransaction(this.selection.root, () => {
-			// Clear the selection for the current client
-			this.clearFluidSelection();
-
-			// Add all the shape ids to an array
-			const shapeIds = this.shapeTree.root.map((shape) => shape.id as string);
-
-			// Add all shapes to the selection for the current client
-			client.selected.insertAtEnd(...shapeIds);
-		});
+		// Add all shapes to the selection for the current client
+		this.selection.updateSelection(shapeIds);
 	};
 
 	public setFluidSelection = (shape: FeltShape): void => {
-		const client = this.getSelectionClient();
-
-		if (!client.selected.includes(shape.id)) {
-			client.selected.insertAtEnd(shape.id);
-		} else {
-			const i = client.selected.findIndex((id) => id === shape.id);
-			client.selected.removeAt(i);
-		}
-	};
-
-	public clearFluidSelection = (): void => {
-		const client = this.selection.root.clients.find(
-			(client) => client.clientId === this.audience.getMyself()?.id,
-		);
-
-		if (client !== undefined) {
-			client.selected.removeRange();
-		}
+		this.selection.toggleSelection(shape.id);
 	};
 
 	// Clear the Fluid selection for a specific shape
 	public clearFluidSelectionForShape = (shape: FeltShape): void => {
-		const client = this.selection.root.clients.find(
-			(client) => client.clientId === this.audience.getMyself()?.id,
-		);
-
-		if (client !== undefined) {
-			const i = client.selected.findIndex((id) => id === shape.id);
-			if (i !== -1) client.selected.removeAt(i);
-		}
+		this.selection.removeItemFromSelection(shape.id);
 	};
 
 	public clearLocalSelectionAndPresence = (): void => {
-		// clear the local selection array
-		this._selectedShapes = [];
-
 		// iterate over the items in the canvas and remove the selection
 		for (const child of this.canvas.children) {
 			if (child instanceof FeltShape) {
@@ -456,26 +407,18 @@ export class FeltApplication {
 
 	public updateLocalSelectionAndPresence = (): void => {
 		this.clearLocalSelectionAndPresence();
-		// iterate over the selection array and updates the selection
-		for (const client of this.selection.root.clients) {
-			if (client.clientId === this.audience.getMyself()?.id) {
-				for (const id of client.selected) {
-					const localShape = this.canvas.getChildByLabel(id) as FeltShape | undefined;
-					if (localShape !== undefined && localShape !== null) {
-						// add the shape to the local selection array
-						this._selectedShapes.push(localShape);
-						localShape.showSelection();
-					}
-				}
-			} else if (this.audience.getMembers().has(client.clientId)) {
-				for (const id of client.selected) {
-					const localShape = this.canvas.getChildByLabel(id) as FeltShape | undefined;
-					if (localShape !== undefined && localShape !== null) {
-						localShape.showPresence();
-					}
-				}
-			} else {
-				// remove client from selection tree
+
+		for (const id of this.selection.getLocalSelected()) {
+			const localShape = this.canvas.getChildByLabel(id) as FeltShape | undefined;
+			if (localShape !== undefined && localShape !== null) {
+				localShape.showSelection();
+			}
+		}
+
+		for (const id of this.selection.getRemoteSelected().keys()) {
+			const localShape = this.canvas.getChildByLabel(id) as FeltShape | undefined;
+			if (localShape !== undefined && localShape !== null) {
+				localShape.showPresence();
 			}
 		}
 	};

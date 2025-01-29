@@ -75,27 +75,25 @@ export function Toolbar(props: { feltApplication: FeltApplication }) {
 	}, []);
 
 	useEffect(() => {
-		const unsubscribe = Tree.on(props.feltApplication.selection.root, "treeChanged", () => {
-			const client = props.feltApplication.audience.getMyself();
-			if (client !== undefined) {
-				const selected = props.feltApplication.selection.root.clients.find(
-					(c) => c.clientId === client.id,
-				);
-				if (selected !== undefined && selected.selected.length === 1) {
-					setSelected(true);
-					setMultiSelected(false);
-				} else if (selected !== undefined && selected.selected.length > 1) {
-					setSelected(true);
-					setMultiSelected(true);
-				} else {
-					setSelected(false);
-					setMultiSelected(false);
-				}
+		const handleSelectionChange = () => {
+			const selected = props.feltApplication.selection.getLocalSelected();
+			if (selected.length === 1) {
+				setSelected(true);
+				setMultiSelected(false);
+			} else if (selected.length > 1) {
+				setSelected(true);
+				setMultiSelected(true);
+			} else {
+				setSelected(false);
+				setMultiSelected(false);
 			}
-		});
-		return () => {
-			unsubscribe();
 		};
+		props.feltApplication.selection.addEventListener("selectionChanged", handleSelectionChange);
+		return () =>
+			props.feltApplication.selection.removeEventListener(
+				"selectionChanged",
+				handleSelectionChange,
+			);
 	}, []);
 
 	useEffect(() => {

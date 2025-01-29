@@ -4,12 +4,16 @@ import React from "react";
 import { createRoot } from "react-dom/client";
 import { ReactApp } from "./react/ux.js";
 import { appTreeConfiguration } from "./schema/app_schema.js";
-import { sessionTreeConfiguration } from "./schema/session_schema.js";
 import { containerSchema } from "./schema/container_schema.js";
 import { loadFluidData } from "./infra/fluid.js";
 import { IFluidContainer } from "fluid-framework";
 import { ISignaler } from "@fluid-experimental/data-objects";
 import { FeltApplication } from "./utils/application.js";
+import { SelectionManager } from "./utils/presence_helpers.js";
+import {
+	acquirePresenceViaDataObject,
+	ExperimentalPresenceDO,
+} from "@fluidframework/presence/alpha";
 
 export async function loadApp(
 	client: AzureClient | OdspClient,
@@ -24,10 +28,10 @@ export async function loadApp(
 		appTree.initialize([]);
 	}
 
-	const sessionTree = container.initialObjects.sessionData.viewWith(sessionTreeConfiguration);
-	if (sessionTree.compatibility.canInitialize) {
-		sessionTree.initialize({ clients: [] });
-	}
+	// Get the Presence data object from the container
+	const selection = new SelectionManager(
+		acquirePresenceViaDataObject(container.initialObjects.presence as ExperimentalPresenceDO),
+	);
 
 	// initialize signal manager
 	const signaler = container.initialObjects.signalManager as ISignaler;
@@ -43,7 +47,7 @@ export async function loadApp(
 		container,
 		services.audience,
 		signaler,
-		sessionTree,
+		selection,
 	);
 
 	// Render the app - note we attach new containers after render so

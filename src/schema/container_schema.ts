@@ -3,7 +3,8 @@
  * Licensed under the MIT License.
  */
 
-import { ContainerSchema, SharedTree } from "fluid-framework";
+import { ExperimentalPresenceManager } from "@fluidframework/presence/alpha";
+import { ContainerSchema, SharedObjectKind, SharedTree } from "fluid-framework";
 import { Signaler } from "@fluid-experimental/data-objects";
 
 // Define the schema of our Container. This includes the DDSes/DataObjects
@@ -11,8 +12,8 @@ import { Signaler } from "@fluid-experimental/data-objects";
 // initial DataObjects we want created when the container is first created.
 export const containerSchema = {
 	initialObjects: {
-		signalManager: Signaler as any,
+		presence: ExperimentalPresenceManager as unknown as SharedObjectKind<unknown>,
 		appData: SharedTree,
-		sessionData: SharedTree,
+		signalManager: Signaler as any,
 	},
 } satisfies ContainerSchema;
