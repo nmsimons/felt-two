@@ -28,10 +28,12 @@ export async function loadApp(
 		appTree.initialize([]);
 	}
 
-	// Get the Presence data object from the container
-	const selection = new SelectionManager(
-		acquirePresenceViaDataObject(container.initialObjects.presence as ExperimentalPresenceDO),
+	const presence = acquirePresenceViaDataObject(
+		container.initialObjects.presence as ExperimentalPresenceDO,
 	);
+
+	// Get the Presence data object from the container
+	const selection = new SelectionManager(presence);
 
 	// initialize signal manager
 	const signaler = container.initialObjects.signalManager as ISignaler;

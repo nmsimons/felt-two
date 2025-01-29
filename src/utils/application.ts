@@ -28,7 +28,7 @@ export class FeltApplication {
 	) {
 		// Initialize the canvas container
 		this._canvas = FeltApplication.createCanvasContainer(pixiApp, () => {
-			this.selection.updateSelection([]);
+			this.selection.changeSelection([]);
 		});
 
 		// Get all existing shapes
@@ -177,10 +177,18 @@ export class FeltApplication {
 			this.canvas,
 			shape,
 			(shape: FeltShape) => {
-				this.selection.updateSelection(shape.id);
+				if (!this.selection.testSelection(shape.id)) {
+					this.selection.changeSelection(shape.id);
+				} else {
+					this.selection.clearSelection();
+				}
 			},
 			(shape: FeltShape) => {
-				this.selection.addItemToSelection(shape.id);
+				if (!this.selection.testSelection(shape.id)) {
+					this.selection.addItemToSelection(shape.id);
+				} else {
+					this.selection.removeItemFromSelection(shape.id);
+				}
 			},
 			this.audience,
 			() => {
@@ -349,7 +357,7 @@ export class FeltApplication {
 		this.shapeTree.root.removeRange(start, end);
 
 		// clear the selection for the current client
-		this.selection.updateSelection([]);
+		this.selection.changeSelection([]);
 	};
 
 	// Called when a shape is deleted in the Fluid Data
@@ -383,7 +391,7 @@ export class FeltApplication {
 		const shapeIds = this.shapeTree.root.map((shape) => shape.id as string);
 
 		// Add all shapes to the selection for the current client
-		this.selection.updateSelection(shapeIds);
+		this.selection.changeSelection(shapeIds);
 	};
 
 	public setFluidSelection = (shape: FeltShape): void => {
@@ -399,8 +407,8 @@ export class FeltApplication {
 		// iterate over the items in the canvas and remove the selection
 		for (const child of this.canvas.children) {
 			if (child instanceof FeltShape) {
-				child.removeSelection();
-				child.removePresence();
+				child.selected = false;
+				child.remoteSelected = false;
 			}
 		}
 	};
@@ -411,14 +419,14 @@ export class FeltApplication {
 		for (const id of this.selection.getLocalSelected()) {
 			const localShape = this.canvas.getChildByLabel(id) as FeltShape | undefined;
 			if (localShape !== undefined && localShape !== null) {
-				localShape.showSelection();
+				localShape.selected = true;
 			}
 		}
 
 		for (const id of this.selection.getRemoteSelected().keys()) {
 			const localShape = this.canvas.getChildByLabel(id) as FeltShape | undefined;
 			if (localShape !== undefined && localShape !== null) {
-				localShape.showPresence();
+				localShape.remoteSelected = true;
 			}
 		}
 	};

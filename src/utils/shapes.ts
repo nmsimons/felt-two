@@ -19,6 +19,8 @@ export function createShapeNode(shapeType: ShapeType, color: Color, x: number, y
 // for creating and managing shapes
 export class FeltShape extends Container {
 	dragging = false;
+	_selected = false;
+	_remoteSelected = false;
 	static readonly size: number = 60;
 	private _selectionFrame: Graphics | undefined;
 	private _presenceFrame: Graphics | undefined;
@@ -69,9 +71,15 @@ export class FeltShape extends Container {
 
 	private _offset: { x: number; y: number } = { x: 0, y: 0 };
 
+	private _moved = false;
+
+	private _selectHandled = false;
+
 	private initUserEvents = () => {
 		const onDragStart = (event: FederatedPointerEvent) => {
 			this._offset = calculateOffset(event);
+			this._moved = false;
+			if (!this.selected) onSelect(event);
 			this.canvas.on("pointerup", onDragEnd);
 			this.canvas.on("pointerupoutside", onDragEnd);
 			this.canvas.on("pointermove", onDragMove);
@@ -90,6 +98,7 @@ export class FeltShape extends Container {
 
 		const onDragMove = (event: FederatedPointerEvent) => {
 			if (this.dragging) {
+				this._moved = true;
 				const pos = calculatePosition(event);
 				this.updateFluidLocation(pos.x, pos.y);
 			}
@@ -116,16 +125,51 @@ export class FeltShape extends Container {
 		};
 
 		const onSelect = (event: FederatedPointerEvent) => {
+			if (this._selectHandled) {
+				this._selectHandled = false;
+				return;
+			}
+
+			if (this._moved) return;
+
 			if (event.ctrlKey) {
 				this.multiSelect(this);
 			} else {
 				this.select(this);
 			}
+
+			this._selectHandled = true;
 		};
 
 		// intialize event handlers
-		this.on("pointerdown", onSelect).on("pointerdown", onDragStart);
+		this.on("pointerdown", onDragStart).on("pointerup", onSelect);
 	};
+
+	public set selected(value: boolean) {
+		this._selected = value;
+		if (value) {
+			this.showSelection();
+		} else {
+			this.removeSelection();
+		}
+	}
+
+	public get selected() {
+		return this._selected;
+	}
+
+	public set remoteSelected(value: boolean) {
+		this._remoteSelected = value;
+		if (value) {
+			this.showPresence();
+		} else {
+			this.removePresence();
+		}
+	}
+
+	public get remoteSelected() {
+		return this._remoteSelected;
+	}
 
 	public set showIndex(value: boolean) {
 		this._text.visible = value;
@@ -235,7 +279,7 @@ export class FeltShape extends Container {
 		this._text.y = -this._text.height / 2;
 	}
 
-	public showSelection() {
+	private showSelection() {
 		if (!this._selectionFrame) {
 			this._selectionFrame = new Graphics();
 			this.addChild(this._selectionFrame);
@@ -256,11 +300,11 @@ export class FeltShape extends Container {
 		this.drawFrame(this._selectionFrame, handleSize, biteSize, color, left, top, right, bottom);
 	}
 
-	public removeSelection() {
+	private removeSelection() {
 		this._selectionFrame?.clear();
 	}
 
-	public showPresence() {
+	private showPresence() {
 		if (!this._presenceFrame) {
 			this._presenceFrame = new Graphics();
 			this.addChild(this._presenceFrame);
@@ -281,7 +325,7 @@ export class FeltShape extends Container {
 		this.drawFrame(this._presenceFrame, handleSize, biteSize, color, left, top, right, bottom);
 	}
 
-	public removePresence() {
+	private removePresence() {
 		this._presenceFrame?.clear();
 	}
 

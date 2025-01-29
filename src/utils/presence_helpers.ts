@@ -11,7 +11,7 @@ import {
 } from "@fluidframework/presence/alpha";
 
 export class SelectionManager extends EventTarget {
-	statesName: `${string}:${string}` = "name:brainstorm-presence";
+	statesName: `${string}:${string}` = "shape:selection";
 
 	statesSchema = {
 		// sets selected to an array of strings
@@ -30,10 +30,12 @@ export class SelectionManager extends EventTarget {
 		this.sessionId = presence.getMyself().sessionId;
 	}
 
+	/** Test if the given id is selected by the local client */
 	public testSelection(id: string) {
 		return this.valueManager.local.items.indexOf(id) != -1;
 	}
 
+	/** Test if the given id is selected by any remote client */
 	public testRemoteSelection(id: string) {
 		const remoteSelectedClients: string[] = [];
 
@@ -48,40 +50,37 @@ export class SelectionManager extends EventTarget {
 		return remoteSelectedClients.length > 0;
 	}
 
-	public updateSelection(id: string | string[]) {
-		if (typeof id == "string") {
-			let arr: string[] = [];
-			const i = this.valueManager.local.items.indexOf(id);
-			if (i == -1) {
-				arr = [id];
-				this.valueManager.local = { items: arr };
-				// emit an event to notify the app that the selection has changed
-				this.dispatchEvent(new Event("selectionChanged"));
-			}
-		} else {
-			this.valueManager.local = { items: id };
-			// emit an event to notify the app that the selection has changed
-			this.dispatchEvent(new Event("selectionChanged"));
-		}
-		return;
-	}
-
-	public toggleSelection(id: string) {
-		const arr: string[] = this.valueManager.local.items.slice();
-		const i = arr.indexOf(id);
-		if (i == -1) {
-			arr.push(id);
-		} else {
-			arr.splice(i, 1);
-		}
-		this.valueManager.local = { items: arr };
-
+	/** Clear the current selection */
+	public clearSelection() {
+		this.valueManager.local = { items: [] };
 		// emit an event to notify the app that the selection has changed
 		this.dispatchEvent(new Event("selectionChanged"));
-
 		return;
 	}
 
+	/** Change the selection to the given id or array of ids */
+	public changeSelection(id: string | string[]) {
+		if (typeof id == "string") {
+			id = [id];
+		}
+		this.valueManager.local = { items: id };
+		// emit an event to notify the app that the selection has changed
+		this.dispatchEvent(new Event("selectionChanged"));
+		return;
+	}
+
+	/** Toggle the selection of the given id */
+	public toggleSelection(id: string) {
+		if (this.testSelection(id)) {
+			this.removeItemFromSelection(id);
+			return;
+		} else {
+			this.addItemToSelection(id);
+		}
+		return;
+	}
+
+	/** Add the given id to the selection */
 	public addItemToSelection(id: string) {
 		const arr: string[] = this.valueManager.local.items.slice();
 		const i = arr.indexOf(id);
@@ -96,6 +95,7 @@ export class SelectionManager extends EventTarget {
 		return;
 	}
 
+	/** Remove the given id from the selection */
 	public removeItemFromSelection(id: string) {
 		const arr: string[] = this.valueManager.local.items.slice();
 		const i = arr.indexOf(id);
@@ -110,10 +110,12 @@ export class SelectionManager extends EventTarget {
 		return;
 	}
 
+	/** Get the current local selection array */
 	public getLocalSelected(): readonly string[] {
 		return this.valueManager.local.items;
 	}
 
+	/** Get the current remote selection map where the key is the selected item and the value is an array of client ids */
 	public getRemoteSelected(): Map<string, string[]> {
 		const remoteSelected = new Map<string, string[]>();
 		for (const cv of this.valueManager.clientValues()) {
@@ -130,6 +132,7 @@ export class SelectionManager extends EventTarget {
 		return remoteSelected;
 	}
 
+	/** Dispose of the selection manager */
 	public dispose() {
 		this.valueManager.events.off("updated", () =>
 			this.dispatchEvent(new Event("selectionChanged")),

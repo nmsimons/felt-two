@@ -4,7 +4,7 @@
  */
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useCallback, useEffect, useState } from "react";
+import { JSX, useCallback, useEffect, useState } from "react";
 import { Color, ShapeType as S, UXColor } from "../utils/utils.js";
 import { ConnectionState, Tree } from "fluid-framework";
 import { FeltApplication as FeltApplication } from "../utils/application.js";
