@@ -19,7 +19,6 @@ export class SelectionManager extends EventTarget {
 	} satisfies PresenceStatesSchema;
 
 	private valueManager: PresenceStatesEntries<typeof this.statesSchema>["selected"];
-	private sessionId: string;
 
 	constructor(presence: IPresence) {
 		super();
@@ -30,7 +29,6 @@ export class SelectionManager extends EventTarget {
 		presence.events.on("attendeeDisconnected", () => {
 			this.dispatchEvent(new Event("selectionChanged"));
 		});
-		this.sessionId = presence.getMyself().sessionId;
 	}
 
 	/** Test if the given id is selected by the local client */
