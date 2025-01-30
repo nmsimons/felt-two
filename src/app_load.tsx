@@ -7,9 +7,8 @@ import { appTreeConfiguration } from "./schema/app_schema.js";
 import { containerSchema } from "./schema/container_schema.js";
 import { loadFluidData } from "./infra/fluid.js";
 import { IFluidContainer } from "fluid-framework";
-import { ISignaler } from "@fluid-experimental/data-objects";
 import { FeltApplication } from "./utils/application.js";
-import { SelectionManager } from "./utils/presence_helpers.js";
+import { DragManager, SelectionManager } from "./utils/presence_helpers.js";
 import {
 	acquirePresenceViaDataObject,
 	ExperimentalPresenceDO,
@@ -35,8 +34,8 @@ export async function loadApp(
 	// Get the Presence data object from the container
 	const selection = new SelectionManager(presence);
 
-	// initialize signal manager
-	const signaler = container.initialObjects.signalManager as ISignaler;
+	// Get the Dragger data object from the container
+	const dragger = new DragManager(presence);
 
 	// create the root element for React
 	const app = document.createElement("div");
@@ -48,7 +47,7 @@ export async function loadApp(
 		appTree,
 		container,
 		services.audience,
-		signaler,
+		dragger,
 		selection,
 	);
 

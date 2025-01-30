@@ -1,16 +1,12 @@
 import { FeltShape } from "./shapes.js";
 
-export interface SignalPackage {
+export interface DragPackage {
 	id: string;
 	x: number;
 	y: number;
 }
 
-export const Signals = {
-	ON_DRAG: "ON_DRAG",
-} as const;
-
-export const Pixi2Signal = (feltShape: FeltShape): SignalPackage => {
+export const Pixi2Drag = (feltShape: FeltShape): DragPackage => {
 	return {
 		id: feltShape.id,
 		x: feltShape.x,
@@ -18,7 +14,7 @@ export const Pixi2Signal = (feltShape: FeltShape): SignalPackage => {
 	};
 };
 
-export const Signal2Pixi = (feltShape: FeltShape, signal: SignalPackage) => {
+export const Drag2Pixi = (feltShape: FeltShape, signal: DragPackage) => {
 	feltShape.x = signal.x;
 	feltShape.y = signal.y;
 	return feltShape;

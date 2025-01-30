@@ -2,9 +2,10 @@ import { Shape, Shapes as FluidShapes } from "../schema/app_schema.js";
 import { Graphics, TextStyle, Text, Container, FederatedPointerEvent } from "pixi.js";
 import { Color, ShapeType } from "./utils.js";
 import { IAzureAudience } from "@fluidframework/azure-client";
-import { Pixi2Signal, Signals } from "./wrappers.js";
+import { Pixi2Drag } from "./wrappers.js";
 import { ISignaler } from "@fluid-experimental/data-objects/";
 import { Tree, TreeStatus } from "fluid-framework";
+import { DragManager } from "./presence_helpers.js";
 
 export function createShapeNode(shapeType: ShapeType, color: Color, x: number, y: number): Shape {
 	return new Shape({
@@ -38,7 +39,7 @@ export class FeltShape extends Container {
 		readonly audience: IAzureAudience,
 		public useSignals: () => boolean,
 		readonly setShowIndex: boolean,
-		readonly signaler: ISignaler,
+		readonly dragger: DragManager,
 	) {
 		super();
 		this.id = this.shape.id;
@@ -235,8 +236,7 @@ export class FeltShape extends Container {
 
 		// Store the position in Fluid
 		if (this.dragging && this.useSignals()) {
-			const sig = Pixi2Signal(this);
-			this.signaler.submitSignal(Signals.ON_DRAG, sig);
+			this.dragger.setDragging(Pixi2Drag(this));
 			this.x = x;
 			this.y = y;
 		} else if (this.dragging) {

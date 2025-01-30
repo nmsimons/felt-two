@@ -9,6 +9,7 @@ import {
 	type PresenceStatesSchema,
 	type PresenceStatesEntries,
 } from "@fluidframework/presence/alpha";
+import { DragPackage } from "./wrappers.js";
 
 export class SelectionManager extends EventTarget {
 	statesName: `${string}:${string}` = "shape:selection";
@@ -23,9 +24,13 @@ export class SelectionManager extends EventTarget {
 	constructor(presence: IPresence) {
 		super();
 		this.valueManager = presence.getStates(this.statesName, this.statesSchema).props.selected;
+
+		// when the selection changes, emit an event to notify the app that the selection has changed
 		this.valueManager.events.on("updated", () =>
 			this.dispatchEvent(new Event("selectionChanged")),
 		);
+
+		// when an attendee disconnects, update the selection
 		presence.events.on("attendeeDisconnected", () => {
 			this.dispatchEvent(new Event("selectionChanged"));
 		});
@@ -131,5 +136,41 @@ export class SelectionManager extends EventTarget {
 		}
 
 		return remoteSelected;
+	}
+}
+
+export class DragManager {
+	statesName: `${string}:${string}` = "shape:dragging";
+
+	statesSchema = {
+		// sets dragging to an object with id, x, and y properties
+		dragging: Latest({
+			id: "",
+			x: 0,
+			y: 0,
+		} as DragPackage),
+	} satisfies PresenceStatesSchema;
+
+	private valueManager: PresenceStatesEntries<typeof this.statesSchema>["dragging"];
+
+	constructor(presence: IPresence) {
+		this.valueManager = presence.getStates(this.statesName, this.statesSchema).props.dragging;
+	}
+
+	public updateEvent = {
+		on: (callback: () => void) => {
+			this.valueManager.events.on("updated", callback);
+		},
+	};
+
+	/** Indicate that an item is being dragged */
+	public setDragging(target: DragPackage) {
+		this.valueManager.local = target;
+		return;
+	}
+
+	/** Get the current drag target */
+	public getDragTargetData() {
+		return this.valueManager.clientValues();
 	}
 }

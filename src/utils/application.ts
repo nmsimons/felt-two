@@ -8,9 +8,9 @@ import { FeltShape, createShapeNode } from "./shapes.js";
 import { Color, getNextColor, getNextShape, getRandomInt, ShapeType } from "./utils.js";
 import { Container, FederatedPointerEvent, Application as PIXIApplication } from "pixi.js";
 import { ConnectionState, IFluidContainer, Tree, TreeView } from "fluid-framework";
-import { Signal2Pixi, SignalPackage, Signals } from "./wrappers.js";
+import { Drag2Pixi } from "./wrappers.js";
 import { createUndoRedoStacks, UndoRedo } from "./undo.js";
-import { SelectionManager } from "./presence_helpers.js";
+import { DragManager, SelectionManager } from "./presence_helpers.js";
 
 export class FeltApplication {
 	readonly undoRedo: UndoRedo;
@@ -20,7 +20,7 @@ export class FeltApplication {
 		public selection: SelectionManager,
 		public audience: IAzureAudience,
 		public useSignals: boolean,
-		public signaler: ISignaler,
+		public dragger: DragManager,
 		public shapeTree: TreeView<typeof Shapes>,
 		public container: IFluidContainer,
 		public maxShapes: number = 10000,
@@ -48,22 +48,17 @@ export class FeltApplication {
 			this.updateLocalSelectionAndPresence();
 		});
 
-		// When shapes are dragged, instead of updating the Fluid data, we send a Signal using fluid. This function will
-		// handle the signal we send and update the local state accordingly.
-		const signalHandler: SignalListener<SignalPackage> = (
-			clientId: string,
-			local: boolean,
-			payload: SignalPackage,
-		) => {
-			if (!local) {
-				const localShape = this.canvas.getChildByLabel(payload.id) as FeltShape | undefined;
+		// event handler for detecting changes to the dragging data and updating
+		// the local dragging state
+		this.dragger.updateEvent.on(() => {
+			// update the local dragging state
+			for (const c of this.dragger.getDragTargetData()) {
+				const localShape = this.canvas.getChildByLabel(c.value.id) as FeltShape | undefined;
 				if (localShape) {
-					Signal2Pixi(localShape, payload);
+					Drag2Pixi(localShape, c.value);
 				}
 			}
-		};
-
-		signaler.onSignal(Signals.ON_DRAG, signalHandler);
+		});
 
 		this.undoRedo = createUndoRedoStacks(shapeTree.events);
 	}
@@ -72,7 +67,7 @@ export class FeltApplication {
 		shapeTree: TreeView<typeof Shapes>,
 		container: IFluidContainer,
 		audience: IAzureAudience,
-		signaler: ISignaler,
+		dragger: DragManager,
 		selection: SelectionManager,
 	): Promise<FeltApplication> {
 		// create PIXI app
@@ -83,7 +78,7 @@ export class FeltApplication {
 			selection,
 			audience,
 			true,
-			signaler,
+			dragger,
 			shapeTree,
 			container,
 		);
@@ -194,7 +189,7 @@ export class FeltApplication {
 				return this.useSignals;
 			},
 			this.showIndex,
-			this.signaler,
+			this.dragger,
 		);
 
 		return feltShape;
