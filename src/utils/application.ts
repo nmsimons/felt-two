@@ -8,7 +8,6 @@ import { FeltShape, createShapeNode } from "./shapes.js";
 import { Color, getNextColor, getNextShape, getRandomInt, ShapeType } from "./utils.js";
 import { Container, FederatedPointerEvent, Application as PIXIApplication } from "pixi.js";
 import { ConnectionState, IFluidContainer, Tree, TreeView } from "fluid-framework";
-import { Drag2Pixi } from "./wrappers.js";
 import { createUndoRedoStacks, UndoRedo } from "./undo.js";
 import { DragManager, SelectionManager } from "./presence_helpers.js";
 
@@ -55,7 +54,8 @@ export class FeltApplication {
 			for (const c of this.dragger.getDragTargetData()) {
 				const localShape = this.canvas.getChildByLabel(c.value.id) as FeltShape | undefined;
 				if (localShape) {
-					Drag2Pixi(localShape, c.value);
+					localShape.x = c.value.x;
+					localShape.y = c.value.y;
 				}
 			}
 		});
@@ -164,8 +164,8 @@ export class FeltApplication {
 		return this._showIndex;
 	}
 
-	// Creates a new FeltShape object which is the local object that represents
-	// all shapes on the canvas
+	/** Creates a new FeltShape object which is the local object that represents
+	all shapes on the canvas */
 	public addNewLocalShape = (shape: Shape): FeltShape => {
 		const feltShape = new FeltShape(
 			this.canvas,

@@ -9,7 +9,7 @@ import {
 	type PresenceStatesSchema,
 	type PresenceStatesEntries,
 } from "@fluidframework/presence/alpha";
-import { DragPackage } from "./wrappers.js";
+import { FeltShape } from "./shapes.js";
 
 export class SelectionManager extends EventTarget {
 	statesName: `${string}:${string}` = "shape:selection";
@@ -174,3 +174,17 @@ export class DragManager {
 		return this.valueManager.clientValues();
 	}
 }
+
+export interface DragPackage {
+	id: string;
+	x: number;
+	y: number;
+}
+
+export const generateDragPackage = (feltShape: FeltShape): DragPackage => {
+	return {
+		id: feltShape.id,
+		x: feltShape.x,
+		y: feltShape.y,
+	};
+};

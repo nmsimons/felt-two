@@ -2,7 +2,7 @@ import { Shape, Shapes as FluidShapes } from "../schema/app_schema.js";
 import { Graphics, TextStyle, Text, Container, FederatedPointerEvent } from "pixi.js";
 import { Color, ShapeType } from "./utils.js";
 import { IAzureAudience } from "@fluidframework/azure-client";
-import { Pixi2Drag } from "./wrappers.js";
+import { generateDragPackage } from "./presence_helpers.js";
 import { ISignaler } from "@fluid-experimental/data-objects/";
 import { Tree, TreeStatus } from "fluid-framework";
 import { DragManager } from "./presence_helpers.js";
@@ -236,7 +236,7 @@ export class FeltShape extends Container {
 
 		// Store the position in Fluid
 		if (this.dragging && this.useSignals()) {
-			this.dragger.setDragging(Pixi2Drag(this));
+			this.dragger.setDragging(generateDragPackage(this));
 			this.x = x;
 			this.y = y;
 		} else if (this.dragging) {
