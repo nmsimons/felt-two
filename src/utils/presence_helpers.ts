@@ -65,7 +65,7 @@ export class SelectionManager extends EventTarget {
 	}
 
 	/** Change the selection to the given id or array of ids */
-	public changeSelection(id: string | string[]) {
+	public setSelection(id: string | string[]) {
 		if (typeof id == "string") {
 			id = [id];
 		}
@@ -78,16 +78,16 @@ export class SelectionManager extends EventTarget {
 	/** Toggle the selection of the given id */
 	public toggleSelection(id: string) {
 		if (this.testSelection(id)) {
-			this.removeItemFromSelection(id);
+			this.removeFromSelection(id);
 			return;
 		} else {
-			this.addItemToSelection(id);
+			this.addToSelection(id);
 		}
 		return;
 	}
 
 	/** Add the given id to the selection */
-	public addItemToSelection(id: string) {
+	public addToSelection(id: string) {
 		const arr: string[] = this.valueManager.local.items.slice();
 		const i = arr.indexOf(id);
 		if (i == -1) {
@@ -102,7 +102,7 @@ export class SelectionManager extends EventTarget {
 	}
 
 	/** Remove the given id from the selection */
-	public removeItemFromSelection(id: string) {
+	public removeFromSelection(id: string) {
 		const arr: string[] = this.valueManager.local.items.slice();
 		const i = arr.indexOf(id);
 		if (i != -1) {
@@ -172,6 +172,12 @@ export class DragManager {
 	/** Get the current drag target */
 	public getDragTargetData() {
 		return this.valueManager.clientValues();
+	}
+
+	// Clear the drag data for the local client
+	public clearDragging() {
+		this.valueManager.local = { id: "", x: 0, y: 0 };
+		return;
 	}
 }
 

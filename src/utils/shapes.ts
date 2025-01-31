@@ -37,7 +37,6 @@ export class FeltShape extends Container {
 		private select: (shape: FeltShape) => void,
 		private multiSelect: (shape: FeltShape) => void,
 		readonly audience: IAzureAudience,
-		public useSignals: () => boolean,
 		readonly setShowIndex: boolean,
 		readonly dragger: DragManager,
 	) {
@@ -81,12 +80,7 @@ export class FeltShape extends Container {
 			this._offset = calculateOffset(event);
 			this._moved = false;
 			this.dragging = true;
-			if (!this.selected) {
-				select(event);
-				this._selectHandled = true;
-			} else {
-				this._selectHandled = false;
-			}
+			setSelectionOnDragStart(event);
 			this.canvas.on("pointerup", onDragEnd);
 			this.canvas.on("pointerupoutside", onDragEnd);
 			this.canvas.on("pointermove", onDragMove);
@@ -99,9 +93,7 @@ export class FeltShape extends Container {
 				this.canvas.off("pointerupoutside", onDragEnd);
 				this.dragging = false;
 				this.updateFluidLocation(this.x, this.y);
-				if (!this._moved && !this._selectHandled) {
-					select(event);
-				}
+				setSelectionOnDragEnd(event);
 			}
 		};
 
@@ -110,6 +102,21 @@ export class FeltShape extends Container {
 				this._moved = true;
 				const pos = calculatePosition(event);
 				this.updateFluidLocation(pos.x, pos.y);
+			}
+		};
+
+		const setSelectionOnDragStart = (event: FederatedPointerEvent) => {
+			if (!this.selected) {
+				select(event);
+				this._selectHandled = true;
+			} else {
+				this._selectHandled = false;
+			}
+		};
+
+		const setSelectionOnDragEnd = (event: FederatedPointerEvent) => {
+			if (!this._moved && !this._selectHandled) {
+				select(event);
 			}
 		};
 
@@ -232,17 +239,22 @@ export class FeltShape extends Container {
 	}
 
 	private updateFluidLocation = (x: number, y: number) => {
+		// Don't update the position if the shape is not in the document
 		if (Tree.status(this.shape) !== TreeStatus.InDocument) return;
 
-		// Store the position in Fluid
-		if (this.dragging && this.useSignals()) {
+		// Persist the new position to Fluid when dragging is complete
+		// Send the new position using the dragger during the drag
+		if (this.dragging) {
 			this.dragger.setDragging(generateDragPackage(this));
-			this.x = x;
-			this.y = y;
-		} else if (this.dragging) {
+			// Update the position of the shape in the local state since
+			// dragger doesn't fire events for local changes
 			this.x = x;
 			this.y = y;
 		} else {
+			// Clear the drag data for the local client
+			this.dragger.clearDragging();
+			// Update the position of the shape in the Fluid state
+			// Don't update local position since it will be updated when the Fluid state changes
 			Tree.runTransaction(this.shape, () => {
 				this.shape.x = x;
 				this.shape.y = y;

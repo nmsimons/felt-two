@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/ban-types */
 /* eslint-disable @typescript-eslint/no-non-null-asserted-optional-chain */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
-import { ISignaler, SignalListener } from "@fluid-experimental/data-objects";
 import { IAzureAudience } from "@fluidframework/azure-client";
 import { Shape, Shapes } from "../schema/app_schema.js";
 import { FeltShape, createShapeNode } from "./shapes.js";
@@ -18,7 +17,6 @@ export class FeltApplication {
 		public pixiApp: PIXIApplication,
 		public selection: SelectionManager,
 		public audience: IAzureAudience,
-		public useSignals: boolean,
 		public dragger: DragManager,
 		public shapeTree: TreeView<typeof Shapes>,
 		public container: IFluidContainer,
@@ -26,7 +24,7 @@ export class FeltApplication {
 	) {
 		// Initialize the canvas container
 		this._canvas = FeltApplication.createCanvasContainer(pixiApp, () => {
-			this.selection.changeSelection([]);
+			this.selection.setSelection([]);
 		});
 
 		// Get all existing shapes
@@ -51,16 +49,20 @@ export class FeltApplication {
 		// the local dragging state
 		this.dragger.updateEvent.on(() => {
 			// update the local dragging state
-			for (const c of this.dragger.getDragTargetData()) {
-				const localShape = this.canvas.getChildByLabel(c.value.id) as FeltShape | undefined;
-				if (localShape) {
-					localShape.x = c.value.x;
-					localShape.y = c.value.y;
-				}
-			}
+			this.updateShapePositionDuringRemoteDrag();
 		});
 
 		this.undoRedo = createUndoRedoStacks(shapeTree.events);
+	}
+
+	private updateShapePositionDuringRemoteDrag() {
+		for (const c of this.dragger.getDragTargetData()) {
+			const localShape = this.canvas.getChildByLabel(c.value.id) as FeltShape | undefined;
+			if (localShape && c.client.getConnectionStatus() === "Connected") {
+				localShape.x = c.value.x;
+				localShape.y = c.value.y;
+			}
+		}
 	}
 
 	public static async build(
@@ -73,15 +75,7 @@ export class FeltApplication {
 		// create PIXI app
 		const pixiApp = await this.createPixiApp();
 
-		return new FeltApplication(
-			pixiApp,
-			selection,
-			audience,
-			true,
-			dragger,
-			shapeTree,
-			container,
-		);
+		return new FeltApplication(pixiApp, selection, audience, dragger, shapeTree, container);
 	}
 
 	private static async createPixiApp() {
@@ -172,22 +166,19 @@ export class FeltApplication {
 			shape,
 			(shape: FeltShape) => {
 				if (!this.selection.testSelection(shape.id)) {
-					this.selection.changeSelection(shape.id);
+					this.selection.setSelection(shape.id);
 				} else {
 					this.selection.clearSelection();
 				}
 			},
 			(shape: FeltShape) => {
 				if (!this.selection.testSelection(shape.id)) {
-					this.selection.addItemToSelection(shape.id);
+					this.selection.addToSelection(shape.id);
 				} else {
-					this.selection.removeItemFromSelection(shape.id);
+					this.selection.removeFromSelection(shape.id);
 				}
 			},
 			this.audience,
-			() => {
-				return this.useSignals;
-			},
 			this.showIndex,
 			this.dragger,
 		);
@@ -351,7 +342,7 @@ export class FeltApplication {
 		this.shapeTree.root.removeRange(start, end);
 
 		// clear the selection for the current client
-		this.selection.changeSelection([]);
+		this.selection.setSelection([]);
 	};
 
 	// Called when a shape is deleted in the Fluid Data
@@ -385,7 +376,7 @@ export class FeltApplication {
 		const shapeIds = this.shapeTree.root.map((shape) => shape.id as string);
 
 		// Add all shapes to the selection for the current client
-		this.selection.changeSelection(shapeIds);
+		this.selection.setSelection(shapeIds);
 	};
 
 	public setFluidSelection = (shape: FeltShape): void => {
@@ -394,7 +385,7 @@ export class FeltApplication {
 
 	// Clear the Fluid selection for a specific shape
 	public clearFluidSelectionForShape = (shape: FeltShape): void => {
-		this.selection.removeItemFromSelection(shape.id);
+		this.selection.removeFromSelection(shape.id);
 	};
 
 	public clearLocalSelectionAndPresence = (): void => {

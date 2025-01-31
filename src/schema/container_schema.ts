@@ -3,7 +3,6 @@
  * Licensed under the MIT License.
  */
 
-import { Signaler } from "@fluid-experimental/data-objects";
 import {
 	ExperimentalPresenceDO,
 	ExperimentalPresenceManager,
@@ -18,6 +17,5 @@ export const containerSchema = {
 		appData: SharedTree,
 		presence:
 			ExperimentalPresenceManager as unknown as SharedObjectKind<ExperimentalPresenceDO>,
-		signalManager: Signaler,
 	},
 } satisfies ContainerSchema;

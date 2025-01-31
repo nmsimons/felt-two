@@ -257,31 +257,6 @@ export function Canvas(props: { feltApplication: FeltApplication }): JSX.Element
 	);
 }
 
-export function SignalsToggle(props: { feltApplication: FeltApplication }) {
-	const [checked, setChecked] = useState(props.feltApplication.useSignals);
-
-	const handleChange = () => {
-		props.feltApplication.useSignals = !props.feltApplication.useSignals;
-		setChecked(props.feltApplication.useSignals);
-	};
-
-	return (
-		<div className="">
-			<label className="pr-2" htmlFor="switchRoundedInfo">
-				Use signals:
-			</label>
-			<input
-				id="switchRoundedInfo"
-				type="checkbox"
-				name="switchRoundedInfo"
-				className="p-2"
-				checked={checked}
-				onChange={handleChange}
-			/>
-		</div>
-	);
-}
-
 export function IndexToggle(props: { feltApplication: FeltApplication }) {
 	const [, setChecked] = useState(props.feltApplication.showIndex);
 
@@ -390,7 +365,6 @@ export function Header(props: { feltApplication: FeltApplication }): JSX.Element
 			<div className="flex m-2">Felt</div>
 			<div className="flex m-2 gap-4 ">
 				<IndexToggle feltApplication={props.feltApplication} />
-				<SignalsToggle {...props} />
 				<ShapeCount {...props} />
 				<ConnectionStatus {...props} />
 				<Audience {...props} />
