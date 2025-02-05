@@ -11,6 +11,10 @@ import {
 } from "@fluidframework/azure-client";
 import { InsecureTokenProvider } from "./azureTokenProvider.js";
 import { AzureFunctionTokenProvider, azureUser, user } from "./azureTokenProvider.js";
+import { createDevtoolsLogger, initializeDevtools } from "@fluidframework/devtools/beta";
+
+// Instantiate the logger
+export const devtoolsLogger = createDevtoolsLogger();
 
 const client = process.env.FLUID_CLIENT;
 const local = client === undefined || client === "local";
@@ -39,4 +43,5 @@ const connectionConfig: AzureRemoteConnectionConfig | AzureLocalConnectionConfig
 	: localConnectionConfig;
 export const clientProps: AzureClientProps = {
 	connection: connectionConfig,
+	logger: devtoolsLogger,
 };

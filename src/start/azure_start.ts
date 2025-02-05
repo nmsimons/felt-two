@@ -1,7 +1,8 @@
 import { AzureClient } from "@fluidframework/azure-client";
 import { loadApp } from "../app_load.js";
-import { clientProps } from "../infra/azure/azureClientProps.js";
+import { clientProps, devtoolsLogger } from "../infra/azure/azureClientProps.js";
 import { AttachState } from "fluid-framework";
+import { initializeDevtools } from "@fluidframework/devtools/beta";
 
 export async function anonymousAzureStart() {
 	// Get the root container id from the URL
@@ -13,6 +14,18 @@ export async function anonymousAzureStart() {
 
 	// Load the app
 	const container = await loadApp(client, containerId);
+
+	// Initialize the Devtools passing the logger and your Container.
+	// The Container could be added later as well with devtools.registerContainerDevtools().
+	const devtools = initializeDevtools({
+		logger: devtoolsLogger,
+		initialContainers: [
+			{
+				container,
+				containerKey: "My Container",
+			},
+		],
+	});
 
 	// If the app is in a `createNew` state - no containerId, and the container is detached, we attach the container.
 	// This uploads the container to the service and connects to the collaboration session.

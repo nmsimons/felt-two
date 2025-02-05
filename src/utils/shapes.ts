@@ -3,7 +3,6 @@ import { Graphics, TextStyle, Text, Container, FederatedPointerEvent } from "pix
 import { Color, ShapeType } from "./utils.js";
 import { IAzureAudience } from "@fluidframework/azure-client";
 import { generateDragPackage } from "./presence_helpers.js";
-import { ISignaler } from "@fluid-experimental/data-objects/";
 import { Tree, TreeStatus } from "fluid-framework";
 import { DragManager } from "./presence_helpers.js";
 
