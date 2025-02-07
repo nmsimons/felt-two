@@ -34,6 +34,10 @@ export class SelectionManager extends EventTarget {
 		presence.events.on("attendeeDisconnected", () => {
 			this.dispatchEvent(new Event("selectionChanged"));
 		});
+
+		presence.events.on("attendeeJoined", () => {
+			this.dispatchEvent(new Event("selectionChanged"));
+		});
 	}
 
 	/** Test if the given id is selected by the local client */
