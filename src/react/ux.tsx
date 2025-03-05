@@ -251,7 +251,7 @@ export function Canvas(props: { feltApplication: FeltApplication }): JSX.Element
 		document.getElementById("canvas")?.appendChild(props.feltApplication.pixiApp.canvas);
 	}, []);
 	return (
-		<div className="flex justify-center w-full h-full">
+		<div className="flex justify-center w-full">
 			<div className="w-fit h-fit m-6" id="canvas"></div>
 		</div>
 	);
