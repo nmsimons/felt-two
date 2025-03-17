@@ -74,6 +74,7 @@ export function Toolbar(props: { feltApplication: FeltApplication }) {
 		};
 	}, []);
 
+	// Test for selection to enable/disable buttons
 	useEffect(() => {
 		const handleSelectionChange = () => {
 			const selected = props.feltApplication.selection.getLocalSelected();
@@ -88,12 +89,9 @@ export function Toolbar(props: { feltApplication: FeltApplication }) {
 				setMultiSelected(false);
 			}
 		};
-		props.feltApplication.selection.addEventListener("selectionChanged", handleSelectionChange);
-		return () =>
-			props.feltApplication.selection.removeEventListener(
-				"selectionChanged",
-				handleSelectionChange,
-			);
+		const unsubscribe =
+			props.feltApplication.selection.events.onLocalUpdate(handleSelectionChange);
+		return unsubscribe;
 	}, []);
 
 	useEffect(() => {

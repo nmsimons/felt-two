@@ -39,30 +39,7 @@ export class FeltApplication {
 			this.updateAllShapes();
 		});
 
-		// event handler for detecting changes to the selection data and updating
-		// the local selection and presence
-		this.selection.addEventListener("selectionChanged", () => {
-			this.updateLocalSelectionAndPresence();
-		});
-
-		// event handler for detecting changes to the dragging data and updating
-		// the local dragging state
-		this.dragger.updateEvent.on(() => {
-			// update the local dragging state
-			this.updateShapePositionDuringRemoteDrag();
-		});
-
 		this.undoRedo = createUndoRedoStacks(shapeTree.events);
-	}
-
-	private updateShapePositionDuringRemoteDrag() {
-		for (const c of this.dragger.getDragTargetData()) {
-			const localShape = this.canvas.getChildByLabel(c.value.id) as FeltShape | undefined;
-			if (localShape && c.client.getConnectionStatus() === "Connected") {
-				localShape.x = c.value.x;
-				localShape.y = c.value.y;
-			}
-		}
 	}
 
 	public static async build(
@@ -164,23 +141,10 @@ export class FeltApplication {
 		const feltShape = new FeltShape(
 			this.canvas,
 			shape,
-			(shape: FeltShape) => {
-				if (!this.selection.testSelection(shape.id)) {
-					this.selection.setSelection(shape.id);
-				} else {
-					this.selection.clearSelection();
-				}
-			},
-			(shape: FeltShape) => {
-				if (!this.selection.testSelection(shape.id)) {
-					this.selection.addToSelection(shape.id);
-				} else {
-					this.selection.removeFromSelection(shape.id);
-				}
-			},
 			this.audience,
 			this.showIndex,
 			this.dragger,
+			this.selection,
 		);
 
 		return feltShape;

@@ -2,7 +2,7 @@ import { Shape, Shapes as FluidShapes } from "../schema/app_schema.js";
 import { Graphics, TextStyle, Text, Container, FederatedPointerEvent } from "pixi.js";
 import { Color, ShapeType } from "./utils.js";
 import { IAzureAudience } from "@fluidframework/azure-client";
-import { generateDragPackage } from "./presence_helpers.js";
+import { generateDragPackage, SelectionManager } from "./presence_helpers.js";
 import { Tree, TreeStatus } from "fluid-framework";
 import { DragManager } from "./presence_helpers.js";
 
@@ -33,11 +33,10 @@ export class FeltShape extends Container {
 	constructor(
 		private canvas: Container,
 		public shape: Shape, // the Fluid shape object
-		private select: (shape: FeltShape) => void,
-		private multiSelect: (shape: FeltShape) => void,
 		readonly audience: IAzureAudience,
 		readonly setShowIndex: boolean,
 		readonly dragger: DragManager,
+		readonly selection: SelectionManager,
 	) {
 		super();
 		this.id = this.shape.id;
@@ -47,9 +46,47 @@ export class FeltShape extends Container {
 		this.initProperties();
 		this.initPixiShape();
 		this.initUserEvents();
-
 		Tree.on(this.shape, "nodeChanged", () => this.sync());
+
+		// Event listeners for when selection changes
+		this.selection.events.onLocalUpdate(() => {
+			this.selected = this.selection.testSelection(this.id);
+		});
+
+		this.selection.events.onRemoteUpdate(() => {
+			this.remoteSelected = this.selection.testRemoteSelection(this.id);
+		});
+
+		this.selection.events.onAttendeeDisconnected(() => {
+			this.remoteSelected = this.selection.testRemoteSelection(this.id);
+		});
+
+		// Event listener for when dragging changes
+		this.dragger.updateEvent.on(() => {
+			for (const c of this.dragger.getDragTargetData()) {
+				if (this.id === c.value.id && c.client.getConnectionStatus() === "Connected") {
+					this.x = c.value.x;
+					this.y = c.value.y;
+				}
+			}
+		});
 	}
+
+	private _select = (shape: FeltShape) => {
+		if (!this.selection.testSelection(shape.id)) {
+			this.selection.setSelection(shape.id);
+		} else {
+			this.selection.clearSelection();
+		}
+	};
+
+	private _multiSelect = (shape: FeltShape) => {
+		if (!this.selection.testSelection(shape.id)) {
+			this.selection.addToSelection(shape.id);
+		} else {
+			this.selection.removeFromSelection(shape.id);
+		}
+	};
 
 	private initPixiShape = () => {
 		this.setShape();
@@ -141,9 +178,9 @@ export class FeltShape extends Container {
 
 		const select = (event: FederatedPointerEvent) => {
 			if (event.ctrlKey) {
-				this.multiSelect(this);
+				this._multiSelect(this);
 			} else {
-				this.select(this);
+				this._select(this);
 			}
 		};
 
