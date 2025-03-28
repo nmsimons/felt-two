@@ -4,7 +4,6 @@ import { Color, ShapeType } from "./utils.js";
 import { IAzureAudience } from "@fluidframework/azure-client";
 import { generateDragPackage, SelectionManager, DragManager, DragPackage } from "./presence.js";
 import { Tree, TreeStatus } from "fluid-framework";
-import { LatestValueClientData } from "@fluidframework/presence/alpha";
 
 export function createShapeNode(shapeType: ShapeType, color: Color, x: number, y: number): Shape {
 	return new Shape({
@@ -19,8 +18,8 @@ export function createShapeNode(shapeType: ShapeType, color: Color, x: number, y
 // for creating and managing shapes
 export class FeltShape extends Container {
 	dragging = false;
-	_selected = false;
-	_remoteSelected = false;
+	private _selected = false;
+	private _remoteSelected: readonly string[] = [];
 	static readonly size: number = 60;
 	private _selectionFrame: Graphics | undefined;
 	private _presenceFrame: Graphics | undefined;
@@ -53,22 +52,35 @@ export class FeltShape extends Container {
 			this.selected = this.selection.testSelection(this.id);
 		});
 
-		this.selection.events.on("updated", () => {
-			this.remoteSelected = this.selection.testRemoteSelection(this.id);
+		this.selection.events.on("updated", (update) => {
+			if (update.value.selected.includes(this.id)) {
+				// Add the remote client to the list of remote session clients
+				// if it is not already in the list
+				if (!this.remoteSelected.includes(update.client.sessionId)) {
+					const arr = this.remoteSelected.slice();
+					arr.push(update.client.sessionId);
+					this.remoteSelected = arr;
+				}
+			} else {
+				this.remoteSelected = this.remoteSelected.filter(
+					(client) => client !== update.client.sessionId,
+				);
+			}
 		});
 
-		this.selection.clients.events.on("attendeeDisconnected", () => {
-			this.remoteSelected = this.selection.testRemoteSelection(this.id);
+		this.selection.clients.events.on("attendeeDisconnected", (update) => {
+			this.remoteSelected = this._remoteSelected.filter(
+				(client) => client !== update.sessionId,
+			);
 		});
 
 		// Event listener for when dragging changes
-		this.dragger.events.on("updated", (update: LatestValueClientData<DragPackage>) => {
-			// Check if the drag target is the current shape
-			// and update the position accordingly
-			const dragData = update.value;
-			if (dragData.id !== this.id) return;
-			this.x = dragData.x;
-			this.y = dragData.y;
+		this.dragger.events.on("updated", (update) => {
+			const data = update.value;
+			// If the data is null, then the dragger is not dragging anything
+			if (data === null || data.id !== this.id) return;
+			this.x = data.x;
+			this.y = data.y;
 		});
 	}
 
@@ -201,9 +213,9 @@ export class FeltShape extends Container {
 		return this._selected;
 	}
 
-	public set remoteSelected(value: boolean) {
+	public set remoteSelected(value: readonly string[]) {
 		this._remoteSelected = value;
-		if (value) {
+		if (value.length > 0) {
 			this.showPresence();
 		} else {
 			this.removePresence();

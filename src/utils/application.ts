@@ -357,7 +357,7 @@ export class FeltApplication {
 		for (const child of this.canvas.children) {
 			if (child instanceof FeltShape) {
 				child.selected = false;
-				child.remoteSelected = false;
+				child.remoteSelected = [];
 			}
 		}
 	};
@@ -375,7 +375,7 @@ export class FeltApplication {
 		for (const id of this.selection.getRemoteSelected().keys()) {
 			const localShape = this.canvas.getChildByLabel(id) as FeltShape | undefined;
 			if (localShape !== undefined && localShape !== null) {
-				localShape.remoteSelected = true;
+				localShape.remoteSelected = [];
 			}
 		}
 	};
