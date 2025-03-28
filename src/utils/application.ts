@@ -8,7 +8,7 @@ import { Color, getNextColor, getNextShape, getRandomInt, ShapeType } from "./ut
 import { Container, FederatedPointerEvent, Application as PIXIApplication } from "pixi.js";
 import { ConnectionState, IFluidContainer, Tree, TreeView } from "fluid-framework";
 import { createUndoRedoStacks, UndoRedo } from "./undo.js";
-import { DragManager, SelectionManager } from "./presence_helpers.js";
+import { DragManager, SelectionManager } from "./presence.js";
 
 export class FeltApplication {
 	readonly undoRedo: UndoRedo;

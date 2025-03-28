@@ -2,9 +2,9 @@ import { Shape, Shapes as FluidShapes } from "../schema/app_schema.js";
 import { Graphics, TextStyle, Text, Container, FederatedPointerEvent } from "pixi.js";
 import { Color, ShapeType } from "./utils.js";
 import { IAzureAudience } from "@fluidframework/azure-client";
-import { generateDragPackage, SelectionManager } from "./presence_helpers.js";
+import { generateDragPackage, SelectionManager, DragManager, DragPackage } from "./presence.js";
 import { Tree, TreeStatus } from "fluid-framework";
-import { DragManager } from "./presence_helpers.js";
+import { LatestValueClientData } from "@fluidframework/presence/alpha";
 
 export function createShapeNode(shapeType: ShapeType, color: Color, x: number, y: number): Shape {
 	return new Shape({
@@ -49,26 +49,26 @@ export class FeltShape extends Container {
 		Tree.on(this.shape, "nodeChanged", () => this.sync());
 
 		// Event listeners for when selection changes
-		this.selection.events.onLocalUpdate(() => {
+		this.selection.events.on("localUpdated", () => {
 			this.selected = this.selection.testSelection(this.id);
 		});
 
-		this.selection.events.onRemoteUpdate(() => {
+		this.selection.events.on("updated", () => {
 			this.remoteSelected = this.selection.testRemoteSelection(this.id);
 		});
 
-		this.selection.events.onAttendeeDisconnected(() => {
+		this.selection.clients.events.on("attendeeDisconnected", () => {
 			this.remoteSelected = this.selection.testRemoteSelection(this.id);
 		});
 
 		// Event listener for when dragging changes
-		this.dragger.updateEvent.on(() => {
-			for (const c of this.dragger.getDragTargetData()) {
-				if (this.id === c.value.id && c.client.getConnectionStatus() === "Connected") {
-					this.x = c.value.x;
-					this.y = c.value.y;
-				}
-			}
+		this.dragger.events.on("updated", (update: LatestValueClientData<DragPackage>) => {
+			// Check if the drag target is the current shape
+			// and update the position accordingly
+			const dragData = update.value;
+			if (dragData.id !== this.id) return;
+			this.x = dragData.x;
+			this.y = dragData.y;
 		});
 	}
 

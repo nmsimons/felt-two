@@ -89,8 +89,10 @@ export function Toolbar(props: { feltApplication: FeltApplication }) {
 				setMultiSelected(false);
 			}
 		};
-		const unsubscribe =
-			props.feltApplication.selection.events.onLocalUpdate(handleSelectionChange);
+		const unsubscribe = props.feltApplication.selection.events.on(
+			"localUpdated",
+			handleSelectionChange,
+		);
 		return unsubscribe;
 	}, []);
 

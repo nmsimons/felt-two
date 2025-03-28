@@ -8,7 +8,7 @@ import { containerSchema } from "./schema/container_schema.js";
 import { loadFluidData } from "./infra/fluid.js";
 import { IFluidContainer } from "fluid-framework";
 import { FeltApplication } from "./utils/application.js";
-import { DragManager, SelectionManager } from "./utils/presence_helpers.js";
+import { createDragManager, createSelectionManager } from "./utils/presence.js";
 import {
 	acquirePresenceViaDataObject,
 	ExperimentalPresenceDO,
@@ -31,11 +31,21 @@ export async function loadApp(
 		container.initialObjects.presence as ExperimentalPresenceDO,
 	);
 
+	const workspace = presence.getStates("workspace:main", {});
+
 	// Get the Presence data object from the container
-	const selection = new SelectionManager(presence);
+	const selection = createSelectionManager({
+		presence,
+		workspace,
+		name: "selection",
+	});
 
 	// Get the Dragger data object from the container
-	const dragger = new DragManager(presence);
+	const dragger = createDragManager({
+		presence,
+		workspace,
+		name: "dragger",
+	});
 
 	// create the root element for React
 	const app = document.createElement("div");
