@@ -7,10 +7,14 @@ import { SchemaFactory, TreeViewConfiguration } from "fluid-framework";
 // As this schema uses a recursive type, the beta SchemaFactoryRecursive is used instead of just SchemaFactory.
 const sf = new SchemaFactory("fc1db2e8-0a00-11ee-be56-0242ac120002");
 
-export class Shape extends sf.object("Shape", {
-	id: sf.identifier,
+export class Position extends sf.object("Position", {
 	x: sf.number,
 	y: sf.number,
+}) {}
+
+export class Shape extends sf.object("Shape", {
+	id: sf.identifier,
+	position: Position,
 	color: sf.string,
 	shapeType: sf.string,
 }) {

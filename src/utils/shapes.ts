@@ -1,14 +1,13 @@
-import { Shape, Shapes as FluidShapes } from "../schema/app_schema.js";
+import { Shape, Shapes as FluidShapes, Position } from "../schema/app_schema.js";
 import { Graphics, TextStyle, Text, Container, FederatedPointerEvent } from "pixi.js";
 import { Color, ShapeType } from "./utils.js";
 import { IAzureAudience } from "@fluidframework/azure-client";
-import { generateDragPackage, SelectionManager, DragManager, DragPackage } from "./presence.js";
+import { SelectionManager, DragManager, DragPackage } from "./presence.js";
 import { Tree, TreeStatus } from "fluid-framework";
 
 export function createShapeNode(shapeType: ShapeType, color: Color, x: number, y: number): Shape {
 	return new Shape({
-		x,
-		y,
+		position: { x, y },
 		color,
 		shapeType: shapeType,
 	});
@@ -47,11 +46,16 @@ export class FeltShape extends Container {
 		this.initUserEvents();
 		Tree.on(this.shape, "nodeChanged", () => this.sync());
 
-		// Event listeners for when selection changes
+		// Initialize event listeners for when presence changes
+		this.initializePresenceEvents();
+	}
+
+	private initializePresenceEvents = () => {
+		// Listen for changes to the selection state of the shape
 		this.selection.events.on("localUpdated", () => {
 			this.selected = this.selection.testSelection(this.id);
 		});
-
+		// Listen for changes to the selection state of remote clients
 		this.selection.events.on("updated", (update) => {
 			if (update.value.selected.includes(this.id)) {
 				// Add the remote client to the list of remote session clients
@@ -62,27 +66,49 @@ export class FeltShape extends Container {
 					this.remoteSelected = arr;
 				}
 			} else {
+				// Remove the remote client from the list of remote session clients
 				this.remoteSelected = this.remoteSelected.filter(
 					(client) => client !== update.client.sessionId,
 				);
 			}
 		});
-
+		// Listen for when a remote client disconnects
 		this.selection.clients.events.on("attendeeDisconnected", (update) => {
+			// Remove the remote client from the list of remote session clients
 			this.remoteSelected = this._remoteSelected.filter(
 				(client) => client !== update.sessionId,
 			);
 		});
 
-		// Event listener for when dragging changes
+		// Event listener for local dragging
+		this.dragger.events.on("localUpdated", (update) => {
+			const data = update.value;
+			if (data === null) {
+				return;
+			} else if (data.id === this.id) {
+				this.x = data.x;
+				this.y = data.y;
+			}
+		});
+
+		// Event listener for remote dragging
 		this.dragger.events.on("updated", (update) => {
 			const data = update.value;
 			// If the data is null, then the dragger is not dragging anything
-			if (data === null || data.id !== this.id) return;
-			this.x = data.x;
-			this.y = data.y;
+			// If the id of the data does not match the id of the shape, then ignore the event
+			if (data === null) {
+				// Check to make sure the shape is in the correct position since
+				// the drag may have been cancelled
+				this.sync();
+			} else if (data.id === this.id) {
+				// Update the position of the shape to the new position
+				// Note that this does not update the Fluid state, only the local state
+				// since the dragger is not in the document yet
+				this.x = data.x;
+				this.y = data.y;
+			}
 		});
-	}
+	};
 
 	private _select = (shape: FeltShape) => {
 		if (!this.selection.testSelection(shape.id)) {
@@ -112,8 +138,8 @@ export class FeltShape extends Container {
 
 	private initProperties = () => {
 		this._shape.tint = Number(this.color);
-		this.x = this.shape.x;
-		this.y = this.shape.y;
+		this.x = this.shape.position.x;
+		this.y = this.shape.position.y;
 		this.zIndex = this.z;
 	};
 
@@ -196,7 +222,7 @@ export class FeltShape extends Container {
 			}
 		};
 
-		// intialize event handlers
+		// initialize event handlers
 		this.on("pointerdown", onDragStart);
 	};
 
@@ -293,29 +319,38 @@ export class FeltShape extends Container {
 		// Persist the new position to Fluid when dragging is complete
 		// Send the new position using the dragger during the drag
 		if (this.dragging) {
-			this.dragger.setDragging(generateDragPackage(this));
-			// Update the position of the shape in the local state since
-			// dragger doesn't fire events for local changes
-			this.x = x;
-			this.y = y;
+			const dragPackage: DragPackage = {
+				id: this.id,
+				x,
+				y,
+			};
+			this.dragger.setDragging(dragPackage);
 		} else {
 			// Clear the drag data for the local client
 			this.dragger.clearDragging();
 			// Update the position of the shape in the Fluid state
 			// Don't update local position since it will be updated when the Fluid state changes
 			Tree.runTransaction(this.shape, () => {
-				this.shape.x = x;
-				this.shape.y = y;
+				this.shape.position = new Position({ x, y });
 			});
 		}
 	};
 
 	public sync() {
-		this.x = this.shape.x;
-		this.y = this.shape.y;
-		this.zIndex = this.z;
-		this.setText(this.z.toString());
-		this._shape.tint = Number(this.shape.color);
+		// Test to see if any of the sync properties have changed
+		if (
+			this.x !== this.shape.position.x ||
+			this.y !== this.shape.position.y ||
+			this.zIndex !== this.z ||
+			this._shape.tint !== Number(this.shape.color)
+		) {
+			console.log("sync", this.shape.id, this.shape.position.x, this.shape.position.y);
+			this.x = this.shape.position.x;
+			this.y = this.shape.position.y;
+			this.zIndex = this.z;
+			this.setText(this.z.toString());
+			this._shape.tint = Number(this.shape.color);
+		}
 	}
 
 	private drawText(value: string): Text {
