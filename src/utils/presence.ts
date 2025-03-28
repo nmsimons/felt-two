@@ -88,7 +88,6 @@ export function createSelectionManager(props: {
 		/** Test if the given id is selected by any remote client */
 		public testRemoteSelection(id: string): string[] {
 			const remoteSelectedClients: string[] = [];
-
 			for (const cv of this.state.clientValues()) {
 				if (cv.client.getConnectionStatus() === "Connected") {
 					if (cv.value.selected.includes(id)) {
@@ -96,7 +95,6 @@ export function createSelectionManager(props: {
 					}
 				}
 			}
-
 			return remoteSelectedClients;
 		}
 
